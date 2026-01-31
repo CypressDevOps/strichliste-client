@@ -1,7 +1,19 @@
 {
-  "files": [],
-  "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
-  ]
+  "compilerOptions": {
+    "target": "ESNext",                   // Modernes JS
+    "module": "ESNext",                   // Vite nutzt ES Module
+    "lib": ["DOM", "DOM.Iterable", "ESNext"], 
+    "allowJs": false,                      // Nur TS-Dateien
+    "jsx": "react-jsx",                    // React 17+ JSX Runtime
+    "moduleResolution": "Node",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,                        // Alle strikten TS-Prüfungen
+    "skipLibCheck": true,                  // Vermeidet unnötige Typ-Fehler in node_modules
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
 }
