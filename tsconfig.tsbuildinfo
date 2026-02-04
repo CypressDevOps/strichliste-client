@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/custom.d.ts","./src/main.tsx","./src/app/confirmmodal.tsx","./src/app/correctionmodal.tsx","./src/app/deckelformmodal.tsx","./src/app/deckelscreen.tsx","./src/app/transactionmodal.tsx","./src/domain/deckelservice.ts","./src/domain/models.ts","./src/utils/nameutils.ts"],"version":"5.9.3"}
