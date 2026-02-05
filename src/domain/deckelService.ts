@@ -93,6 +93,12 @@ export const useDeckelState = () => {
   const addTransaction = (deckelId: string, tx: Transaction) => {
     if (isAbendGeschlossen) return;
 
+    const deckel = deckelList.find((d) => d.id === deckelId);
+    if (!deckel) return;
+
+    // WICHTIG: Wenn Deckel bezahlt → keine neuen Produkte
+    if (deckel.status === DECKEL_STATUS.BEZAHLT) return;
+
     const txWithId: Transaction = { ...tx, id: tx.id ?? generateId() };
 
     setDeckelList((prev) =>
@@ -200,8 +206,8 @@ export const useDeckelState = () => {
     setIsAbendGeschlossen(true);
   };
 
-  // Deckel als bezahlt markieren
-  const markDeckelAsPaid = (deckelId: string) => {
+  // Deckel als bezahlt oder offen markieren
+  const markDeckelAsPaid = (deckelId: string, paid: boolean = true) => {
     if (isAbendGeschlossen) return;
 
     setDeckelList((prev) =>
@@ -209,8 +215,8 @@ export const useDeckelState = () => {
         d.id === deckelId
           ? {
               ...d,
-              status: DECKEL_STATUS.BEZAHLT,
-              isActive: false,
+              status: paid ? DECKEL_STATUS.BEZAHLT : DECKEL_STATUS.OFFEN,
+              isActive: !paid, // bezahlt = inaktiv, offen = aktiv
               isSelected: d.isSelected,
               lastActivity: new Date(),
             }

@@ -5,6 +5,7 @@ export const DECKEL_STATUS = {
   OFFEN: 'OFFEN',
   BEZAHLT: 'BEZAHLT',
   HISTORISCH: 'HISTORISCH',
+  GESCHLOSSEN: 'GESCHLOSSEN',
 } as const;
 
 export type DeckelStatus = (typeof DECKEL_STATUS)[keyof typeof DECKEL_STATUS];
