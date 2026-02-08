@@ -16,7 +16,9 @@ const generateId = (): string => {
     if (hasRandomUUID) {
       return (maybeCrypto as { randomUUID: () => string }).randomUUID();
     }
-  } catch {}
+  } catch {
+    // Ignoriert: crypto.randomUUID ist optional, Fallback wird genutzt
+  }
 
   return Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
 };

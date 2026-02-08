@@ -23,7 +23,7 @@ export const GuestList: React.FC<GuestListProps> = ({
       <h2 className='text-lg font-semibold mb-4 pl-4'></h2>
 
       {deckelList.length === 0 ? (
-        <p className='text-gray-300 text-center mt-8 text-xl font-semibold'>
+        <p className='text-gray-300 text-center mt-80 text-3xl font-semibold'>
           Kein Gast im Schützenverein 🎯
         </p>
       ) : (

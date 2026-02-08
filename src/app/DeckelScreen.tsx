@@ -147,11 +147,11 @@ export const DeckelScreen: React.FC = () => {
                 }
               />
             </>
-          ) : (
+          ) : deckelList.length > 0 ? (
             <p className='text-gray-300 text-xl font-semibold mt-6'>
               Wählen Sie einen Gast aus, um die Details anzuzeigen.
             </p>
-          )}
+          ) : null}
         </div>
       </div>
 
