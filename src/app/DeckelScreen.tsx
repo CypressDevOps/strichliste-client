@@ -121,6 +121,13 @@ export const DeckelScreen: React.FC = () => {
                 setSelectedTxId={setSelectedTxId}
               />
 
+              <img
+                src='/images/strichliste-icons/alc-icon.png'
+                alt='Getränke'
+                title='Bier, Cola, Schnaps'
+                className='mt-4 w-15 h-15 mx-auto opacity-60'
+              />
+
               <ProductButtons
                 label='Stubbi'
                 icon='/images/strichliste-icons/icon-stubbi.png'
