@@ -107,6 +107,8 @@ export const DeckelScreen: React.FC = () => {
           deckelBackground={deckelBackground}
           paidDeckelBackground={paidDeckelBackground}
         />
+        <div className='hidden lg:block w-px bg-gray-300' />
+        <div className='block lg:hidden h-px bg-gray-300' />
 
         <div className='w-full lg:w-2/3 px-4 py-4 overflow-y-auto flex-shrink h-[calc(100dvh-140px)]'>
           {selectedDeckel ? (
