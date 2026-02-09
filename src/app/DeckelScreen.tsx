@@ -32,6 +32,7 @@ export const DeckelScreen: React.FC = () => {
     abendAbschliessen,
     isAbendGeschlossen,
     markDeckelAsPaid,
+    updateDeckelStatus,
   } = useDeckelState();
 
   const {
@@ -53,7 +54,7 @@ export const DeckelScreen: React.FC = () => {
     handleCorrectionConfirm,
     handleTransactionConfirm,
     handlePayConfirm,
-
+    handleStatusChange,
     executeDelete,
     executeCorrection,
     executeAbend,
@@ -65,6 +66,7 @@ export const DeckelScreen: React.FC = () => {
     abendAbschliessen,
     addTransaction,
     markDeckelAsPaid,
+    updateDeckelStatus,
   });
 
   const {
@@ -106,7 +108,9 @@ export const DeckelScreen: React.FC = () => {
           onSelect={handleDeckelClick}
           deckelBackground={deckelBackground}
           paidDeckelBackground={paidDeckelBackground}
+          onStatusChange={handleStatusChange}
         />
+
         <div className='hidden lg:block w-px bg-gray-300' />
         <div className='block lg:hidden h-px bg-gray-300' />
 

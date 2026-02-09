@@ -1,6 +1,6 @@
 // src/domain/deckelService.ts
 import { useState, useEffect } from 'react';
-import { DECKEL_STATUS, DeckelUIState, Transaction } from './models';
+import { DECKEL_STATUS, DeckelUIState, Transaction, DeckelStatus } from './models';
 
 // -----------------------------
 // ID GENERATOR
@@ -17,7 +17,7 @@ const generateId = (): string => {
       return (maybeCrypto as { randomUUID: () => string }).randomUUID();
     }
   } catch {
-    // Ignoriert: crypto.randomUUID ist optional, Fallback wird genutzt
+    // Fallback to custom ID generation if crypto.randomUUID is not available or fails
   }
 
   return Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
@@ -57,7 +57,6 @@ const loadInitialState = (): {
     let closed = parsed.isAbendGeschlossen ?? false;
     let closedAt = parsed.abendClosedAt ? new Date(parsed.abendClosedAt) : null;
 
-    // Dates rekonstruieren
     list = list.map((d) => ({
       ...d,
       lastActivity: new Date(d.lastActivity),
@@ -67,7 +66,6 @@ const loadInitialState = (): {
       })),
     }));
 
-    // 05:00-Reset-Logik
     if (closed && closedAt) {
       const now = new Date();
       if (isAfterFiveAM(now, closedAt)) {
@@ -107,8 +105,8 @@ export const useDeckelState = () => {
         abendClosedAt: abendClosedAt ? abendClosedAt.toISOString() : null,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch (err) {
-      console.error('Fehler beim Speichern in localStorage:', err);
+    } catch {
+      // Ignore write errors (e.g. quota exceeded)
     }
   }, [deckelList, isAbendGeschlossen, abendClosedAt]);
 
@@ -124,6 +122,16 @@ export const useDeckelState = () => {
 
   const addDeckel = (name: string): string => {
     if (isAbendGeschlossen) return '';
+
+    const existsActiveWithSameName = deckelList.some(
+      (d) =>
+        d.name.trim().toLowerCase() === name.trim().toLowerCase() &&
+        d.status !== DECKEL_STATUS.BEZAHLT
+    );
+
+    if (existsActiveWithSameName) {
+      return '';
+    }
 
     const newDeckel: DeckelUIState = {
       id: generateId(),
@@ -224,11 +232,30 @@ export const useDeckelState = () => {
     );
   };
 
+  const updateDeckelStatus = (id: string, status: DeckelStatus) => {
+    if (isAbendGeschlossen) return;
+
+    setDeckelList((prev) =>
+      prev.map((d) =>
+        d.id === id
+          ? {
+              ...d,
+              status: status,
+              isActive: status === DECKEL_STATUS.OFFEN,
+              lastActivity: new Date(),
+            }
+          : d
+      )
+    );
+  };
+
   const getSortedDeckel = (): DeckelUIState[] => {
     const statusOrder: Record<string, number> = {
       OFFEN: 1,
-      BEZAHLT: 2,
-      HISTORISCH: 3,
+      WEG: 2,
+      GONE: 3,
+      BEZAHLT: 4,
+      HISTORISCH: 5,
     };
 
     return [...deckelList].sort((a, b) => {
@@ -295,6 +322,7 @@ export const useDeckelState = () => {
     addTransaction,
     removeTransaction,
     removeTransactionFlexible,
+    updateDeckelStatus,
     getSortedDeckel,
     abendAbschliessen,
     isAbendGeschlossen,

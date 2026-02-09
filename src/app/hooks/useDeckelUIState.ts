@@ -1,6 +1,6 @@
 // src/app/hooks/useDeckelUIState.ts
 import { useState } from 'react';
-import { DeckelUIState, Transaction } from '../../domain/models';
+import { DeckelUIState, Transaction, DeckelStatus } from '../../domain/models';
 
 interface UIHookProps {
   deckelList: DeckelUIState[];
@@ -10,6 +10,7 @@ interface UIHookProps {
   abendAbschliessen: () => void;
   addTransaction: (deckelId: string, tx: Transaction) => void;
   markDeckelAsPaid: (id: string, paid?: boolean) => void;
+  updateDeckelStatus: (id: string, status: DeckelStatus) => void;
 }
 
 type ConfirmType = 'delete' | 'correction' | 'abend' | null;
@@ -22,6 +23,7 @@ export const useDeckelUIState = ({
   abendAbschliessen,
   addTransaction,
   markDeckelAsPaid,
+  updateDeckelStatus,
 }: UIHookProps) => {
   const [selectedDeckelId, setSelectedDeckelId] = useState<string | null>(null);
   const [selectedTxId, setSelectedTxId] = useState<string | null>(null);
@@ -47,10 +49,25 @@ export const useDeckelUIState = ({
   });
 
   const handleDeckelClick = (id: string) => {
-    const newId = selectedDeckelId === id ? null : id;
-    setSelectedDeckelId(newId);
-    selectDeckel(newId ?? '');
+    if (selectedDeckelId === id) {
+      // Abwahl
+      setSelectedDeckelId(null);
+      selectDeckel(''); // Domain-State ebenfalls zurücksetzen
+      setSelectedTxId(null);
+      return;
+    }
+
+    // Auswahl
+    setSelectedDeckelId(id);
+    selectDeckel(id);
     setSelectedTxId(null);
+  };
+
+  const handleStatusChange = (id: string, status: DeckelStatus) => {
+    updateDeckelStatus(id, status);
+    if (selectedDeckelId === id) {
+      selectDeckel(id);
+    }
   };
 
   const openConfirm = (type: ConfirmType, message: string, label: string, payload?: string) => {
@@ -98,8 +115,6 @@ export const useDeckelUIState = ({
     if (!selectedDeckelId || !confirmState.payload) return;
 
     removeTransaction(selectedDeckelId, confirmState.payload);
-
-    // Deckel nach Korrektur wieder auf OFFEN setzen
     markDeckelAsPaid(selectedDeckelId, false);
 
     if (selectedTxId === confirmState.payload) setSelectedTxId(null);
@@ -160,6 +175,7 @@ export const useDeckelUIState = ({
     confirmState,
     closeConfirm,
     handleDeckelClick,
+    handleStatusChange,
     openDeleteConfirm,
     openAbendConfirm,
     handleCorrectionConfirm,

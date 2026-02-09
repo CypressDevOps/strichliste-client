@@ -1,6 +1,7 @@
 // src/app/components/DeckelFooter.tsx
 import React from 'react';
 import { DeckelUIState } from '../../domain/models';
+import { canCloseEveningNow } from '../../utils/closeEvening';
 
 interface DeckelFooterProps {
   isAbendGeschlossen: boolean;
@@ -33,6 +34,15 @@ export const DeckelFooter: React.FC<DeckelFooterProps> = ({
   onOpenCorrection,
   onAbendAbschliessen,
 }) => {
+  const closeAllowed = canCloseEveningNow();
+
+  const handleAbendClick = () => {
+    if (isAbendGeschlossen) return;
+    if (!closeAllowed) return;
+    // direkte Delegation an Parent-Handler
+    onAbendAbschliessen();
+  };
+
   return (
     <footer className='flex-shrink-0 flex justify-between items-center gap-4 border-t border-gray-700 px-4 py-3 overflow-x-hidden'>
       {/* Linke Seite */}
@@ -108,10 +118,10 @@ export const DeckelFooter: React.FC<DeckelFooterProps> = ({
         </button>
 
         <button
-          onClick={onAbendAbschliessen}
-          disabled={isAbendGeschlossen}
+          onClick={handleAbendClick}
+          disabled={isAbendGeschlossen || !closeAllowed}
           className={`px-5 py-2 font-bold text-base rounded shadow transition ${
-            !isAbendGeschlossen
+            !isAbendGeschlossen && closeAllowed
               ? 'bg-yellow-300 text-blue-950 hover:bg-yellow-400'
               : 'bg-yellow-900/30 text-white/60 cursor-not-allowed'
           }`}
