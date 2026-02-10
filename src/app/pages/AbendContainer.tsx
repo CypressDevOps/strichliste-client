@@ -5,23 +5,34 @@ import { closeEvening, Change, markEveningClosedNow } from '../../utils/closeEve
 import { DeckelFooter } from '../components/DeckelFooter';
 import { GuestList } from '../components/GuestList';
 
-// Beispiel-API-Wrapper (anpassen)
+// Beispiel-API-Wrapper (ANPASSEN!)
 const api = {
-  // optional: implementiere batch endpoint auf dem Server
   batchUpdateDeckelStatus: async (items: { id: string; status: DeckelStatus }[]) => {
-    // Beispiel: POST /api/deckel/batch
-    // return fetch('/api/deckel/batch', { method: 'POST', body: JSON.stringify(items) })
-    //         .then(r => r.json());
-    throw new Error('batchUpdateDeckelStatus not implemented');
+    const resp = await fetch('/api/deckel/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(items),
+    });
+
+    if (!resp.ok) throw new Error('Batch update failed');
+    return resp.json();
   },
+
   updateDeckelStatus: async (id: string, status: DeckelStatus) => {
-    // Beispiel: PATCH /api/deckel/:id
-    // return fetch(`/api/deckel/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }).then(r => r.json());
-    return { id, status }; // stub
+    const resp = await fetch(`/api/deckel/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+
+    if (!resp.ok) throw new Error('Update failed');
+    return resp.json();
   },
+
   fetchDeckelList: async (): Promise<DeckelUIState[]> => {
-    // fetch current list from server
-    return []; // stub
+    const resp = await fetch('/api/deckel');
+    if (!resp.ok) throw new Error('Fetch failed');
+    return resp.json();
   },
 };
 

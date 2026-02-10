@@ -93,6 +93,9 @@ export const DeckelScreen: React.FC = () => {
     );
   }
 
+  // --- WICHTIG: nur nicht-bezahlte Namen an das Modal übergeben
+  const existingActiveNames = deckelList.filter((d) => d.status !== 'BEZAHLT').map((d) => d.name);
+
   return (
     <div className='flex flex-col h-[100dvh] text-gray-200 text-white'>
       <header className='flex-shrink-0 px-4 pt-4 pb-2 border-b border-gray-300'>
@@ -187,7 +190,7 @@ export const DeckelScreen: React.FC = () => {
       <DeckelFormModal
         isOpen={modals.addGuest}
         onClose={() => setModals((m) => ({ ...m, addGuest: false }))}
-        existingNames={deckelList.map((d) => d.name)}
+        existingNames={existingActiveNames}
         onSave={(name) => {
           const newId = addDeckel(name);
           setSelectedDeckelId(newId);

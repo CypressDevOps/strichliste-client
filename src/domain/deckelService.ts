@@ -29,12 +29,13 @@ const generateId = (): string => {
 const STORAGE_KEY = 'deckel_state_v1';
 
 // -----------------------------
-// HELFER: 05:00-Regel
+// HELFER: 05:00-Regel (NÄCHSTER TAG 05:00)
 // -----------------------------
 const isAfterFiveAM = (now: Date, closedAt: Date): boolean => {
-  const fiveAM = new Date(closedAt);
-  fiveAM.setHours(5, 0, 0, 0);
-  return now.getTime() > fiveAM.getTime();
+  const nextFiveAM = new Date(closedAt);
+  nextFiveAM.setDate(nextFiveAM.getDate() + 1);
+  nextFiveAM.setHours(5, 0, 0, 0);
+  return now.getTime() > nextFiveAM.getTime();
 };
 
 // -----------------------------
@@ -69,6 +70,7 @@ const loadInitialState = (): {
     if (closed && closedAt) {
       const now = new Date();
       if (isAfterFiveAM(now, closedAt)) {
+        // Nach dem nächsten Tag 05:00: bezahlte Deckel entfernen, Abend wieder öffnen
         list = list.filter((d) => d.status !== DECKEL_STATUS.BEZAHLT);
         closed = false;
         closedAt = null;
@@ -276,6 +278,7 @@ export const useDeckelState = () => {
 
         const saldo = (deckel.transactions ?? []).reduce((s, t) => s + t.sum, 0);
 
+        // 1) Saldo 0 -> "Gast hat bezahlt"
         if (saldo === 0) {
           return {
             ...deckel,
@@ -284,10 +287,11 @@ export const useDeckelState = () => {
           };
         }
 
+        // 2) Alle anderen offenen Deckel -> "Gast ist gegangen" (GONE)
         return {
           ...deckel,
-          status: DECKEL_STATUS.OFFEN,
-          isActive: deckel.isSelected,
+          status: DECKEL_STATUS.GONE,
+          isActive: false,
         };
       })
     );
