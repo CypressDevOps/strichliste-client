@@ -97,6 +97,25 @@ export const getRootName = (name: string): string => {
   return cleaned;
 };
 
+// Extrahiert aus einer Possessiv‑Basis den reinen Namen.
+// Beispiel: "Kais" -> "Kai", "Jannis'" -> "Jannis", "Marias & Nicos" -> "Marias & Nicos"
+export const baseNameFromPossessive = (possessive: string): string => {
+  if (!possessive) return possessive;
+  let s = stripTrailingNumber(possessive).trim();
+  // entferne explizites "Deckel" Suffix falls vorhanden
+  s = s.replace(/\s+Deckel$/i, '').trim();
+
+  // Trailing apostroph entfernen (z.B. "Jannis'")
+  if (s.endsWith("'")) return s.slice(0, -1);
+
+  // Falls Possessiv mit einfachem "s" gebildet wurde, entferne dieses trailing "s"
+  if (s.length > 1 && /s$/i.test(s)) {
+    return s.slice(0, -1);
+  }
+
+  return s;
+};
+
 // Prüft, ob zwei Namen zur selben Basis gehören.
 // Behandelt "root", "root deckel", "root deckel N", "root N" als gleich.
 export const isSameBaseName = (a: string, b: string): boolean => {

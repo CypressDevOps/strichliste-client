@@ -16,6 +16,7 @@ interface Props {
   onCancel: () => void;
   secondaryAction?: SecondaryAction; // optional: zeigt zusätzlichen Button links von Confirm
   showSavedInfo?: boolean; // neu: steuert Anzeige "Gespeicherte Information"
+  confirmClassName?: string;
 }
 
 export const ConfirmModal: React.FC<Props> = ({
@@ -28,6 +29,7 @@ export const ConfirmModal: React.FC<Props> = ({
   onCancel,
   secondaryAction,
   showSavedInfo = true,
+  confirmClassName,
 }) => {
   const confirmRef = useRef<HTMLButtonElement | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
@@ -40,6 +42,7 @@ export const ConfirmModal: React.FC<Props> = ({
 
       const onKey = (e: KeyboardEvent) => {
         if (e.key === 'Escape') onCancel();
+        else if (e.key === 'Enter') onConfirm();
       };
       window.addEventListener('keydown', onKey);
 
@@ -70,11 +73,7 @@ export const ConfirmModal: React.FC<Props> = ({
         </p>
 
         {/* Optionaler Hinweis, kann per Prop deaktiviert werden */}
-        {showSavedInfo && (
-          <div className='mt-3 text-xs text-gray-500' aria-hidden>
-            Gespeicherte Information
-          </div>
-        )}
+        {showSavedInfo}
 
         <div className='mt-6 flex justify-end gap-3'>
           <button
@@ -97,7 +96,9 @@ export const ConfirmModal: React.FC<Props> = ({
           <button
             ref={confirmRef}
             onClick={onConfirm}
-            className='px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700'
+            className={`px-4 py-2 ${
+              confirmClassName ?? 'bg-blue-600 text-white rounded hover:bg-blue-700'
+            }`}
             aria-label={confirmLabel}
           >
             {confirmLabel}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { DeckelUIState, DECKEL_STATUS } from '../domain/models';
 import ReactDOM from 'react-dom';
 
@@ -12,7 +12,6 @@ type Props = {
 
 export const MergeCorrectionModal: React.FC<Props> = ({
   candidates,
-  sourceId,
   onMerge,
   onCreateNew,
   onCancel,
@@ -20,18 +19,23 @@ export const MergeCorrectionModal: React.FC<Props> = ({
   const [selected, setSelected] = useState<string | null>(null);
   const [isMerging, setIsMerging] = useState(false);
 
-  useEffect(() => {
-    // focus first item for a11y
-    if (candidates.length > 0) setSelected(candidates[0].id);
-  }, [candidates]);
+  // Precompute visible (non-paid) candidates and default selection without setting
+  // state inside an effect to avoid cascading renders.
+  const visibleCandidates = React.useMemo(
+    () => candidates.filter((c) => c.status !== DECKEL_STATUS.BEZAHLT),
+    [candidates]
+  );
+  const defaultSelectedId = visibleCandidates.length > 0 ? visibleCandidates[0].id : null;
+  const activeSelected = selected ?? defaultSelectedId;
 
   const handleMerge = () => {
-    if (!selected) return;
-    const target = candidates.find((c) => c.id === selected);
+    const targetId = selected ?? defaultSelectedId;
+    if (!targetId) return;
+    const target = candidates.find((c) => c.id === targetId);
     if (!target) return;
-    if (target.status === DECKEL_STATUS.BEZAHLT) return; // blocked
+    if (target.status === DECKEL_STATUS.BEZAHLT) return; // blocked (shouldn't happen)
     setIsMerging(true);
-    onMerge(selected, { note: 'Korrektur Merge' });
+    onMerge(targetId, { note: 'Korrektur Merge' });
   };
 
   const modalContent = (
@@ -64,65 +68,75 @@ export const MergeCorrectionModal: React.FC<Props> = ({
 
         <div style={{ marginTop: 12 }}>
           {candidates.length === 0 && <p>Keine Ziel‑Deckel mit gleichem Namen gefunden.</p>}
-          {candidates
-            .sort((a, b) => {
-              const aActive = a.isActive ? 0 : 1;
-              const bActive = b.isActive ? 0 : 1;
-              if (aActive !== bActive) return aActive - bActive;
-              return new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime();
-            })
-            .map((c) => (
-              <div
-                key={c.id}
-                onClick={() => setSelected(c.id)}
-                role='button'
-                tabIndex={0}
-                onKeyDown={(e) => (e.key === 'Enter' ? setSelected(c.id) : null)}
-                aria-pressed={selected === c.id}
-                style={{
-                  padding: 10,
-                  borderRadius: 6,
-                  background: selected === c.id ? 'rgba(255,255,255,0.04)' : 'transparent',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: 8,
-                  cursor: 'pointer',
-                }}
-              >
-                <div>
-                  <strong>{c.name}</strong>
-                  <div style={{ opacity: 0.8, fontSize: 12 }}>
-                    {c.status} — {c.ownerId}
+          {/** Filter out already paid targets */}
+          {(() => {
+            const visibleCandidates = candidates.filter((c) => c.status !== DECKEL_STATUS.BEZAHLT);
+            return visibleCandidates.length === 0 ? (
+              <p>Keine verfügbaren Ziel‑Deckel zum Zusammenführen gefunden.</p>
+            ) : (
+              visibleCandidates
+                .sort((a, b) => {
+                  const aActive = a.isActive ? 0 : 1;
+                  const bActive = b.isActive ? 0 : 1;
+                  if (aActive !== bActive) return aActive - bActive;
+                  return new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime();
+                })
+                .map((c) => (
+                  <div
+                    key={c.id}
+                    onClick={() => setSelected(c.id)}
+                    role='button'
+                    tabIndex={0}
+                    onKeyDown={(e) => (e.key === 'Enter' ? setSelected(c.id) : null)}
+                    aria-pressed={activeSelected === c.id}
+                    style={{
+                      padding: 10,
+                      borderRadius: 6,
+                      background:
+                        activeSelected === c.id ? 'rgba(255,255,255,0.04)' : 'transparent',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: 8,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div>
+                      <strong>{c.name}</strong>
+                      <div style={{ opacity: 0.8, fontSize: 12 }}>
+                        {c.status === DECKEL_STATUS.GONE
+                          ? 'Gast ist gegangen'
+                          : c.status === DECKEL_STATUS.OFFEN
+                            ? 'Gast ist da'
+                            : c.ownerId}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right', fontSize: 13 }}>
+                      <div>Letzte Aktivität: {new Date(c.lastActivity).toLocaleString()}</div>
+                      <div>Saldo: {(c.transactions ?? []).reduce((s, t) => s + t.sum, 0)} €</div>
+                    </div>
                   </div>
-                </div>
-                <div style={{ textAlign: 'right', fontSize: 13 }}>
-                  <div>Letzte Aktivität: {new Date(c.lastActivity).toLocaleString()}</div>
-                  <div>Saldo: {(c.transactions ?? []).reduce((s, t) => s + t.sum, 0)} €</div>
-                  {c.status === DECKEL_STATUS.BEZAHLT && (
-                    <div style={{ color: '#ffb4b4' }}>Ziel ist bezahlt — Merge blockiert</div>
-                  )}
-                </div>
-              </div>
-            ))}
+                ))
+            );
+          })()}
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginTop: 20, flexWrap: 'wrap' }}>
           <button
             onClick={handleMerge}
             disabled={
-              !selected ||
+              !activeSelected ||
               isMerging ||
-              candidates.find((c) => c.id === selected)?.status === DECKEL_STATUS.BEZAHLT
+              candidates.find((c) => c.id === activeSelected)?.status === DECKEL_STATUS.BEZAHLT
             }
             style={{
               flex: '1 1 auto',
               minWidth: 180,
               padding: '12px 16px',
               background:
-                !selected ||
+                !activeSelected ||
                 isMerging ||
-                candidates.find((c) => c.id === selected)?.status === DECKEL_STATUS.BEZAHLT
+                candidates.find((c) => c.id === activeSelected)?.status === DECKEL_STATUS.BEZAHLT
                   ? '#555'
                   : '#4CAF50',
               color: 'white',
@@ -131,15 +145,15 @@ export const MergeCorrectionModal: React.FC<Props> = ({
               fontSize: 14,
               fontWeight: 600,
               cursor:
-                !selected ||
+                !activeSelected ||
                 isMerging ||
-                candidates.find((c) => c.id === selected)?.status === DECKEL_STATUS.BEZAHLT
+                candidates.find((c) => c.id === activeSelected)?.status === DECKEL_STATUS.BEZAHLT
                   ? 'not-allowed'
                   : 'pointer',
               opacity:
-                !selected ||
+                !activeSelected ||
                 isMerging ||
-                candidates.find((c) => c.id === selected)?.status === DECKEL_STATUS.BEZAHLT
+                candidates.find((c) => c.id === activeSelected)?.status === DECKEL_STATUS.BEZAHLT
                   ? 0.6
                   : 1,
               transition: 'all 0.2s',

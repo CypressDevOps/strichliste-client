@@ -530,44 +530,52 @@ export const useDeckelState = () => {
   const mergeCorrectionIntoDeckel = (
     targetId: string,
     sourceId: string,
-    options?: { note?: string; userId?: string }
+    options?: { note?: string; userId?: string; excludeTxId?: string }
   ): MergeResult => {
     if (isAbendGeschlossen) return { success: false, message: 'Abend geschlossen' };
 
     let performed = false;
     let removedId: string | undefined = undefined;
+    let failReason: string | undefined = undefined;
 
     setDeckelList((prev) => {
       const target = prev.find((p) => p.id === targetId);
       const source = prev.find((p) => p.id === sourceId);
-      if (!target) return prev;
-      if (!source) return prev;
-      if (targetId === sourceId) return prev;
-      if (target.status === DECKEL_STATUS.BEZAHLT) return prev; // block merging into a paid deckel
+      if (!target) {
+        failReason = 'Target not found';
+        return prev;
+      }
+      if (!source) {
+        failReason = 'Source not found';
+        return prev;
+      }
+      if (targetId === sourceId) {
+        failReason = 'Source and target are identical';
+        return prev;
+      }
+      if (target.status === DECKEL_STATUS.BEZAHLT) {
+        failReason = 'Target is paid';
+        return prev;
+      } // block merging into a paid deckel
 
-      // calculate remaining amount on source
-      const sourceSaldo = (source.transactions ?? []).reduce((s, t) => s + t.sum, 0);
-      const transferAmount = sourceSaldo; // TODO: adapt if project stores paidAmount separately
-
-      const mergeTx = {
-        id: generateId(),
-        date: new Date(),
-        description:
-          `Korrektur‑Merge von ${source.name}` + (options?.note ? ` — ${options.note}` : ''),
-        count: 1,
-        sum: transferAmount,
-      } as Transaction;
+      // Filter out the transaction being corrected and transfer all remaining txs
+      const txsToTransfer = (source.transactions ?? [])
+        .filter((t) => t.id !== options?.excludeTxId)
+        .map((t) => ({
+          ...t,
+          description: `Korrektur — Zusammenführung von ${source.name} — ${t.description}`,
+        }));
 
       performed = true;
       removedId = sourceId;
 
-      // Update target with merged transaction and remove source entirely
+      // Update target with all remaining source transactions and remove source entirely
       return prev
         .map((d) => {
           if (d.id === targetId) {
             return {
               ...d,
-              transactions: [...(d.transactions ?? []), mergeTx],
+              transactions: [...(d.transactions ?? []), ...txsToTransfer],
               lastActivity: new Date(),
               isActive: true,
             };
@@ -582,7 +590,8 @@ export const useDeckelState = () => {
       return { success: true, targetId, removedId };
     }
 
-    return { success: false, message: 'Merge could not be performed' };
+    console.warn('mergeCorrectionIntoDeckel failed', { sourceId, targetId, reason: failReason });
+    return { success: false, message: failReason ?? 'Merge could not be performed' };
   };
 
   return {

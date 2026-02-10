@@ -21,7 +21,12 @@ import { useIsMobile } from './hooks/useIsMobile';
 import { PayDeckelModal } from './PayDeckelModal';
 import MergeCorrectionModal from './MergeCorrectionModal';
 import { DECKEL_STATUS } from '../domain/models';
-import { toDeckelForm, nextDisplayName, getRootName } from '../utils/nameUtils';
+import {
+  toDeckelForm,
+  nextDisplayName,
+  getRootName,
+  baseNameFromPossessive,
+} from '../utils/nameUtils';
 
 export const DeckelScreen: React.FC = () => {
   const [pendingAddName, setPendingAddName] = useState<string | null>(null);
@@ -67,6 +72,7 @@ export const DeckelScreen: React.FC = () => {
     executeAbend,
     mergeCandidates,
     pendingCorrectionDeckelId,
+    pendingCorrectionTxId,
     openConfirm,
   } = useDeckelUIState({
     deckelList,
@@ -240,11 +246,13 @@ export const DeckelScreen: React.FC = () => {
               // Show confirm dialog asking if user really wants to create another guest with the same name
               setPendingAddName(baseForMatch);
               setPendingAddOwnerId(null);
+              const basePlain = baseNameFromPossessive(baseForMatch);
               openConfirm(
                 'delete',
-                `Es existiert bereits ein Gast namens "${baseForMatch}". Soll wirklich ein neuer Gast mit dem gleichen Namen erstellt werden?`,
+                `"${basePlain}" existiert bereits. Neuen Gast trotzdem anlegen?`,
                 'Ja, erstellen',
-                'ADD_DUPLICATE_CONFIRM'
+                'ADD_DUPLICATE_CONFIRM',
+                'bg-green-600 text-white rounded hover:bg-green-700'
               );
               setModals((m) => ({ ...m, confirm: true }));
               console.log('=== onSave END (duplicate name confirm) ===');
@@ -342,6 +350,7 @@ export const DeckelScreen: React.FC = () => {
         title={confirmState.type === 'correction' ? 'Korrektur bestätigen' : undefined}
         message={confirmState.message}
         confirmLabel={confirmState.label}
+        confirmClassName={confirmState.confirmClassName}
         showSavedInfo={false} // deaktiviert "Gespeicherte Information"
         onConfirm={() => {
           // Handle special confirm payloads
@@ -394,6 +403,7 @@ export const DeckelScreen: React.FC = () => {
             if (!pendingCorrectionDeckelId) return;
             const res = mergeCorrectionIntoDeckel(targetId, pendingCorrectionDeckelId, {
               note: options?.note,
+              excludeTxId: pendingCorrectionTxId ?? undefined,
             });
             console.log('mergeCorrectionIntoDeckel result:', res);
             if (res.success) {

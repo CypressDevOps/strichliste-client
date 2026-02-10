@@ -47,10 +47,12 @@ export const useDeckelUIState = ({
     message: string;
     label: string;
     payload?: string;
+    confirmClassName?: string;
   }>({
     type: null,
     message: '',
     label: 'Bestätigen',
+    confirmClassName: undefined,
   });
 
   // Merge flow state
@@ -80,8 +82,14 @@ export const useDeckelUIState = ({
     }
   };
 
-  const openConfirm = (type: ConfirmType, message: string, label: string, payload?: string) => {
-    setConfirmState({ type, message, label, payload });
+  const openConfirm = (
+    type: ConfirmType,
+    message: string,
+    label: string,
+    payload?: string,
+    confirmClassName?: string
+  ) => {
+    setConfirmState({ type, message, label, payload, confirmClassName });
     setModals((m) => ({ ...m, confirm: true }));
   };
 
@@ -263,7 +271,7 @@ export const useDeckelUIState = ({
   };
 
   const closeConfirm = () => {
-    setConfirmState({ type: null, message: '', label: 'Bestätigen' });
+    setConfirmState({ type: null, message: '', label: 'Bestätigen', confirmClassName: undefined });
     setModals((m) => ({ ...m, confirm: false }));
   };
 
@@ -316,6 +324,7 @@ export const useDeckelUIState = ({
     // Merge flow exports
     mergeCandidates,
     pendingCorrectionDeckelId,
+    pendingCorrectionTxId,
     openMergeSelect,
     openConfirm,
   };
