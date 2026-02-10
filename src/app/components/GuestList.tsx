@@ -1,7 +1,6 @@
 // src/app/components/GuestList.tsx
 import React, { useMemo, useState } from 'react';
 import { DECKEL_STATUS, DeckelUIState, DeckelStatus } from '../../domain/models';
-import { formatPossessiveCompound } from '../../utils/nameUtils';
 import {
   DndContext,
   DragOverlay,
@@ -80,9 +79,7 @@ const DraggableGuest: React.FC<{
       aria-pressed={isSelected}
     >
       <div className='pl-4 w-fit'>
-        <span className='mb-2 text-yellow-300 text-xl font-semibold block'>
-          {formatPossessiveCompound(deckel.name)}
-        </span>
+        <span className='mb-2 text-yellow-300 text-xl font-semibold block'>{deckel.name}</span>
 
         <div
           className='relative w-[120px] h-[120px] md:w-[150px] md:h-[150px] rounded-lg overflow-hidden flex-shrink-0 transition'

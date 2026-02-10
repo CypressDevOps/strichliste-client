@@ -1,7 +1,12 @@
 // src/domain/deckelService.ts
 import { useState, useEffect } from 'react';
 import { DECKEL_STATUS, DeckelUIState, Transaction, DeckelStatus } from './models';
-
+import {
+  displayNameFromStored,
+  getRootName,
+  nextDisplayName,
+  toDeckelForm,
+} from '../utils/nameUtils';
 // -----------------------------
 // ID GENERATOR
 // -----------------------------
@@ -17,10 +22,25 @@ const generateId = (): string => {
       return (maybeCrypto as { randomUUID: () => string }).randomUUID();
     }
   } catch {
-    // Fallback to custom ID generation if crypto.randomUUID is not available or fails
+    // Fallback
   }
 
   return Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
+};
+
+// -----------------------------
+// MIGRATE LOADED LIST (module-level helper)
+// moved here so it can be used by the lazy useState initializer
+// -----------------------------
+const migrateLoadedList = (list: DeckelUIState[]): DeckelUIState[] => {
+  return list.map((d) => {
+    const cleanedName = displayNameFromStored ? displayNameFromStored(d.name) : d.name;
+    return {
+      ...d,
+      name: cleanedName,
+      rootKey: getRootName(cleanedName),
+    };
+  });
 };
 
 // -----------------------------
@@ -39,7 +59,7 @@ const isAfterFiveAM = (now: Date, closedAt: Date): boolean => {
 };
 
 // -----------------------------
-// INITIAL LOAD (LAZY)
+// INITIAL LOAD (LAZY) mit Migration ownerId
 // -----------------------------
 const loadInitialState = (): {
   list: DeckelUIState[];
@@ -58,8 +78,10 @@ const loadInitialState = (): {
     let closed = parsed.isAbendGeschlossen ?? false;
     let closedAt = parsed.abendClosedAt ? new Date(parsed.abendClosedAt) : null;
 
+    // Migration: ownerId setzen, falls fehlt; parse dates
     list = list.map((d) => ({
       ...d,
+      ownerId: d.ownerId ?? d.id,
       lastActivity: new Date(d.lastActivity),
       transactions: (d.transactions ?? []).map((t: Transaction) => ({
         ...t,
@@ -89,7 +111,10 @@ const loadInitialState = (): {
 export const useDeckelState = () => {
   const initial = loadInitialState();
 
-  const [deckelList, setDeckelList] = useState<DeckelUIState[]>(initial.list);
+  const [deckelList, setDeckelList] = useState<DeckelUIState[]>(() => {
+    // Use the already-parsed initial state which includes owner/date migration and 5:00 logic
+    return migrateLoadedList(initial.list ?? []);
+  });
   const [isAbendGeschlossen, setIsAbendGeschlossen] = useState(initial.closed);
   const [abendClosedAt, setAbendClosedAt] = useState<Date | null>(initial.closedAt);
 
@@ -108,7 +133,7 @@ export const useDeckelState = () => {
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch {
-      // Ignore write errors (e.g. quota exceeded)
+      // Ignore write errors
     }
   }, [deckelList, isAbendGeschlossen, abendClosedAt]);
 
@@ -122,35 +147,78 @@ export const useDeckelState = () => {
   const darfDeckelGezahltWerden = deckelSaldo < 0;
   const gastHatBezahlt = selectedDeckel?.status === DECKEL_STATUS.BEZAHLT;
 
-  const addDeckel = (name: string): string => {
+  /**
+   * addDeckel
+   * - name: string
+   * - ownerId?: string  -> wenn übergeben, wird dieser ownerId verwendet (Verknüpfung)
+   *
+   * Rückgabe: neue id oder '' bei Fehler
+   */
+  // Ersetze deine vorhandene addDeckel-Funktion durch diese// Pfad anpassen
+
+  const addDeckel = (name: string, ownerId?: string): string => {
     if (isAbendGeschlossen) return '';
+    const trimmed = name.trim();
+    if (!trimmed) return '';
+    const newOwnerId = ownerId ?? generateId();
 
-    const existsActiveWithSameName = deckelList.some(
-      (d) =>
-        d.name.trim().toLowerCase() === name.trim().toLowerCase() &&
-        d.status !== DECKEL_STATUS.BEZAHLT
-    );
+    // Debug: trace and log entry to addDeckel
+    console.log('addDeckel called with:', { name: trimmed, ownerId, newOwnerId });
+    console.trace('addDeckel trace');
 
-    if (existsActiveWithSameName) {
-      return '';
+    if (ownerId) {
+      const existsSameOwnerActive = deckelList.some(
+        (d) => (d.ownerId ?? d.id) === newOwnerId && d.status !== DECKEL_STATUS.BEZAHLT
+      );
+      if (existsSameOwnerActive) {
+        console.warn('addDeckel: owner already has active deckel, returning empty');
+        return '';
+      }
     }
 
-    const newDeckel: DeckelUIState = {
-      id: generateId(),
-      name,
-      status: DECKEL_STATUS.OFFEN,
-      isActive: true,
-      lastActivity: new Date(),
-      isSelected: true,
-      transactions: [],
-    };
+    // Normalisiere Eingabe zuerst in die gewünschte Deckel‑Form (possessive basis ohne "Deckel")
+    const baseForDisplay = toDeckelForm(trimmed);
+    console.log('addDeckel: baseForDisplay after toDeckelForm:', baseForDisplay);
 
-    setDeckelList((prev) => [
-      newDeckel,
-      ...prev.map((d) => ({ ...d, isActive: false, isSelected: false })),
-    ]);
+    // Generate id ONCE before setState (crucial for reliable return value)
+    const createdId = generateId();
 
-    return newDeckel.id;
+    setDeckelList((prev) => {
+      // nextDisplayName berechnet "X Deckel" oder "X Deckel N" basierend auf prev
+      const displayName = nextDisplayName(baseForDisplay, prev);
+
+      // rootKey für spätere, schnelle Vergleiche (z. B. beim Matchen)
+      const rootKey = getRootName(displayName);
+
+      // Debug: prev names and computed display/root
+      try {
+        console.log(
+          'addDeckel - prev names:',
+          prev.map((p) => p.name)
+        );
+      } catch (e) {
+        console.warn('addDeckel - failed to map prev names', e);
+      }
+      console.log('addDeckel - computed displayName:', displayName, 'rootKey:', rootKey);
+
+      const newDeckel: DeckelUIState = {
+        id: createdId,
+        ownerId: newOwnerId,
+        name: displayName,
+        rootKey,
+        status: DECKEL_STATUS.OFFEN,
+        isActive: true,
+        lastActivity: new Date(),
+        isSelected: true,
+        transactions: [],
+      };
+
+      // vorherige Einträge deaktivieren
+      const updatedPrev = prev.map((d) => ({ ...d, isActive: false, isSelected: false }));
+      return [newDeckel, ...updatedPrev];
+    });
+
+    return createdId;
   };
 
   const selectDeckel = (id: string) => {
@@ -234,20 +302,45 @@ export const useDeckelState = () => {
     );
   };
 
+  /**
+   * updateDeckelStatus
+   * sorgt für konsistente Flags (isActive/isSelected/lastActivity)
+   */
   const updateDeckelStatus = (id: string, status: DeckelStatus) => {
     if (isAbendGeschlossen) return;
 
     setDeckelList((prev) =>
-      prev.map((d) =>
-        d.id === id
-          ? {
-              ...d,
-              status: status,
-              isActive: status === DECKEL_STATUS.OFFEN,
-              lastActivity: new Date(),
-            }
-          : d
-      )
+      prev.map((d) => {
+        if (d.id !== id) return d;
+
+        if (status === DECKEL_STATUS.GONE) {
+          return {
+            ...d,
+            status,
+            isActive: false,
+            isSelected: false,
+            lastActivity: new Date(),
+          };
+        }
+
+        if (status === DECKEL_STATUS.BEZAHLT) {
+          return {
+            ...d,
+            status,
+            isActive: false,
+            isSelected: false,
+            lastActivity: new Date(),
+          };
+        }
+
+        // OFFEN oder andere Status
+        return {
+          ...d,
+          status,
+          isActive: status === DECKEL_STATUS.OFFEN,
+          lastActivity: status === DECKEL_STATUS.OFFEN ? new Date() : d.lastActivity,
+        };
+      })
     );
   };
 
@@ -311,10 +404,185 @@ export const useDeckelState = () => {
               status: paid ? DECKEL_STATUS.BEZAHLT : DECKEL_STATUS.OFFEN,
               isActive: !paid,
               lastActivity: new Date(),
+              isSelected: paid ? false : d.isSelected,
             }
           : d
       )
     );
+  };
+
+  /**
+   * mergeDeckelInto
+   * - transferiert alle Transaktionen (außer optional excludeTxId) von fromId nach toId
+   * - setzt fromId auf GONE
+   * - verwendet addTransaction/removeTransaction intern via setDeckelList für atomare Änderung
+   */
+  // Ersetze die vorhandene mergeDeckelInto-Implementierung durch diese Version
+  const mergeDeckelInto = (fromId: string, toId: string, excludeTxId?: string) => {
+    if (isAbendGeschlossen) return;
+
+    setDeckelList((prev) => {
+      const from = prev.find((p) => p.id === fromId);
+      const to = prev.find((p) => p.id === toId);
+      if (!from || !to) return prev;
+
+      // verbleibende Transaktionen vom 'from' (ohne excludeTxId)
+      const remainingTxs = (from.transactions ?? [])
+        .filter((t) => t.id !== excludeTxId)
+        .map((t) => ({
+          id: t.id ?? generateId(),
+          date: t.date ?? new Date(),
+          description: t.description,
+          count: t.count,
+          sum: t.sum,
+        }));
+
+      // append, vermeide Duplikate nach id
+      const existingIds = new Set((to.transactions ?? []).map((t) => t.id));
+      const appended = remainingTxs.filter((t) => !existingIds.has(t.id));
+
+      // Erzeuge neue Liste: Ziel mit angehängten txs; Quelle ggf. entfernen
+      const next = prev
+        .map((d) => {
+          if (d.id === toId) {
+            return {
+              ...d,
+              transactions: [...(d.transactions ?? []), ...appended],
+              lastActivity: new Date(),
+              isActive: true,
+            };
+          }
+          if (d.id === fromId) {
+            // entferne die übertragenen txs (behalte nur excludeTxId falls vorhanden)
+            const kept = (d.transactions ?? []).filter((t) => t.id === excludeTxId);
+            return {
+              ...d,
+              transactions: kept,
+              status: DECKEL_STATUS.GONE,
+              isActive: false,
+              isSelected: false,
+              lastActivity: new Date(),
+            };
+          }
+          return d;
+        })
+        // Wenn nach dem Transfer keine Transaktionen mehr im 'from' Deckel sind, entferne ihn komplett
+        .filter((d) => {
+          if (d.id !== fromId) return true;
+          const txCount = (d.transactions ?? []).length;
+          // Entfernen, wenn keine Transaktionen mehr vorhanden sind
+          return txCount > 0;
+        });
+
+      return next;
+    });
+  };
+
+  /**
+   * mergeInputIntoDeckel
+   * - Wenn ein Nutzer beim Anlegen einen existierenden Root auswählt, wird
+   *   der Input in den existierenden Deckel gemerged (keine neue Nummerierung).
+   * - Fügt optional eine Notiz‑Transaktion hinzu, aktualisiert lastActivity.
+   */
+  const mergeInputIntoDeckel = (
+    targetId: string,
+    possBase: string,
+    ownerId?: string
+  ): { success: boolean; targetId?: string } => {
+    if (isAbendGeschlossen) return { success: false };
+
+    let found = false;
+    setDeckelList((prev) => {
+      const next = prev.map((d) => {
+        if (d.id !== targetId) return d;
+        found = true;
+        // Optional: add a small merge note transaction
+        const noteTx = {
+          id: generateId(),
+          date: new Date(),
+          description: `Merge: ${possBase}`,
+          count: 1,
+          sum: 0,
+        } as Transaction;
+
+        return {
+          ...d,
+          ownerId: ownerId ?? d.ownerId,
+          transactions: [...(d.transactions ?? []), noteTx],
+          lastActivity: new Date(),
+          isActive: true,
+        };
+      });
+      return next;
+    });
+
+    return found ? { success: true, targetId } : { success: false };
+  };
+
+  /**
+   * mergeCorrectionIntoDeckel
+   * - Transfer remaining amount from a paid source deckel into an existing target deckel.
+   * - Removes source deckel completely from the list after transfer.
+   * - Returns MergeResult with success flag and ids.
+   */
+  type MergeResult = { success: boolean; targetId?: string; removedId?: string; message?: string };
+
+  const mergeCorrectionIntoDeckel = (
+    targetId: string,
+    sourceId: string,
+    options?: { note?: string; userId?: string }
+  ): MergeResult => {
+    if (isAbendGeschlossen) return { success: false, message: 'Abend geschlossen' };
+
+    let performed = false;
+    let removedId: string | undefined = undefined;
+
+    setDeckelList((prev) => {
+      const target = prev.find((p) => p.id === targetId);
+      const source = prev.find((p) => p.id === sourceId);
+      if (!target) return prev;
+      if (!source) return prev;
+      if (targetId === sourceId) return prev;
+      if (target.status === DECKEL_STATUS.BEZAHLT) return prev; // block merging into a paid deckel
+
+      // calculate remaining amount on source
+      const sourceSaldo = (source.transactions ?? []).reduce((s, t) => s + t.sum, 0);
+      const transferAmount = sourceSaldo; // TODO: adapt if project stores paidAmount separately
+
+      const mergeTx = {
+        id: generateId(),
+        date: new Date(),
+        description:
+          `Korrektur‑Merge von ${source.name}` + (options?.note ? ` — ${options.note}` : ''),
+        count: 1,
+        sum: transferAmount,
+      } as Transaction;
+
+      performed = true;
+      removedId = sourceId;
+
+      // Update target with merged transaction and remove source entirely
+      return prev
+        .map((d) => {
+          if (d.id === targetId) {
+            return {
+              ...d,
+              transactions: [...(d.transactions ?? []), mergeTx],
+              lastActivity: new Date(),
+              isActive: true,
+            };
+          }
+          return d;
+        })
+        .filter((d) => d.id !== sourceId); // Remove source deckel from list
+    });
+
+    if (performed) {
+      console.log('mergeCorrectionIntoDeckel', { sourceId, targetId, userId: options?.userId });
+      return { success: true, targetId, removedId };
+    }
+
+    return { success: false, message: 'Merge could not be performed' };
   };
 
   return {
@@ -333,5 +601,8 @@ export const useDeckelState = () => {
     markDeckelAsPaid,
     darfDeckelGezahltWerden,
     gastHatBezahlt,
+    mergeDeckelInto,
+    mergeInputIntoDeckel,
+    mergeCorrectionIntoDeckel,
   };
 };

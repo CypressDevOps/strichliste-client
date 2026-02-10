@@ -1,6 +1,11 @@
 // src/app/ConfirmModal.tsx
 import React, { useEffect, useRef } from 'react';
 
+interface SecondaryAction {
+  label: string;
+  onClick: () => void;
+}
+
 interface Props {
   isOpen: boolean;
   title?: string;
@@ -9,29 +14,30 @@ interface Props {
   cancelLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
+  secondaryAction?: SecondaryAction; // optional: zeigt zusätzlichen Button links von Confirm
+  showSavedInfo?: boolean; // neu: steuert Anzeige "Gespeicherte Information"
 }
 
 export const ConfirmModal: React.FC<Props> = ({
   isOpen,
   title = 'Bestätigung',
   message,
-  confirmLabel = 'Löschen',
+  confirmLabel = 'Bestätigen',
   cancelLabel = 'Abbrechen',
   onConfirm,
   onCancel,
+  secondaryAction,
+  showSavedInfo = true,
 }) => {
   const confirmRef = useRef<HTMLButtonElement | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (isOpen) {
-      // Fokus auf den Bestätigen-Button setzen
       confirmRef.current?.focus();
-      // Scroll verhindern
       const prevOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
 
-      // Escape zum Schließen
       const onKey = (e: KeyboardEvent) => {
         if (e.key === 'Escape') onCancel();
       };
@@ -63,18 +69,35 @@ export const ConfirmModal: React.FC<Props> = ({
           {message}
         </p>
 
+        {/* Optionaler Hinweis, kann per Prop deaktiviert werden */}
+        {showSavedInfo && (
+          <div className='mt-3 text-xs text-gray-500' aria-hidden>
+            Gespeicherte Information
+          </div>
+        )}
+
         <div className='mt-6 flex justify-end gap-3'>
           <button
             onClick={onCancel}
-            className='px-4 py-2 bg-gray-700 rounded hover:bg-gray-800'
+            className='px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300'
             aria-label={cancelLabel}
           >
             {cancelLabel}
           </button>
+
+          {secondaryAction && (
+            <button
+              onClick={secondaryAction.onClick}
+              className='px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600'
+            >
+              {secondaryAction.label}
+            </button>
+          )}
+
           <button
             ref={confirmRef}
             onClick={onConfirm}
-            className='px-4 py-2 bg-red-800 text-white rounded hover:bg-red-900'
+            className='px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700'
             aria-label={confirmLabel}
           >
             {confirmLabel}

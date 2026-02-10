@@ -22,7 +22,8 @@ export const useDeckelComputed = (
   const isReadOnly =
     isAbendGeschlossen ||
     selectedDeckel?.status === DECKEL_STATUS.GESCHLOSSEN ||
-    selectedDeckel?.status === DECKEL_STATUS.BEZAHLT;
+    selectedDeckel?.status === DECKEL_STATUS.BEZAHLT ||
+    selectedDeckel?.status === DECKEL_STATUS.GONE;
 
   const hasTransactions = transactions.length > 0;
 

@@ -12,19 +12,22 @@ export const DECKEL_STATUS = {
 export type DeckelStatus = (typeof DECKEL_STATUS)[keyof typeof DECKEL_STATUS];
 
 export interface Transaction {
+  id?: string;
   date: Date | string;
   description: string;
   count: number;
   sum: number;
-  id?: string;
 }
 
 export interface DeckelUIState {
   id: string;
+  /** Persistente Gast‑Identität; falls nicht vorhanden, wird beim Laden auf id gesetzt */
+  ownerId?: string;
   name: string;
   status: DeckelStatus;
   isSelected: boolean;
   isActive: boolean;
-  lastActivity: Date;
+  lastActivity: Date | string;
   transactions?: Transaction[];
+  rootKey?: string;
 }

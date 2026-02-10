@@ -1,5 +1,5 @@
 // src/app/DeckelScreen.tsx
-import React from 'react';
+import React, { useState } from 'react';
 
 import { useDeckelState } from '../domain/deckelService';
 
@@ -18,10 +18,16 @@ import paidDeckelBackground from '../assets/bezahlt-deckckel.png';
 import { useDeckelComputed } from './hooks/useDeckelComputed';
 import { useDeckelUIState } from './hooks/useDeckelUIState';
 import { useIsMobile } from './hooks/useIsMobile';
-import { formatPossessiveCompound } from '../utils/nameUtils';
 import { PayDeckelModal } from './PayDeckelModal';
+import MergeCorrectionModal from './MergeCorrectionModal';
+import { DECKEL_STATUS } from '../domain/models';
+import { toDeckelForm, nextDisplayName, getRootName } from '../utils/nameUtils';
 
 export const DeckelScreen: React.FC = () => {
+  const [pendingAddName, setPendingAddName] = useState<string | null>(null);
+  const [pendingAddOwnerId, setPendingAddOwnerId] = useState<string | null>(null);
+  const [isAddingDeckel, setIsAddingDeckel] = useState(false);
+
   const {
     deckelList,
     addDeckel,
@@ -33,6 +39,8 @@ export const DeckelScreen: React.FC = () => {
     isAbendGeschlossen,
     markDeckelAsPaid,
     updateDeckelStatus,
+    mergeDeckelInto,
+    mergeCorrectionIntoDeckel,
   } = useDeckelState();
 
   const {
@@ -47,7 +55,6 @@ export const DeckelScreen: React.FC = () => {
 
     confirmState,
     closeConfirm,
-
     handleDeckelClick,
     openDeleteConfirm,
     openAbendConfirm,
@@ -58,6 +65,9 @@ export const DeckelScreen: React.FC = () => {
     executeDelete,
     executeCorrection,
     executeAbend,
+    mergeCandidates,
+    pendingCorrectionDeckelId,
+    openConfirm,
   } = useDeckelUIState({
     deckelList,
     selectDeckel,
@@ -67,6 +77,7 @@ export const DeckelScreen: React.FC = () => {
     addTransaction,
     markDeckelAsPaid,
     updateDeckelStatus,
+    mergeDeckelInto, // wird intern für automatisches Merge verwendet
   });
 
   const {
@@ -120,9 +131,7 @@ export const DeckelScreen: React.FC = () => {
         <div className='w-full lg:w-2/3 px-4 py-4 overflow-y-auto flex-shrink h-[calc(100dvh-140px)]'>
           {selectedDeckel ? (
             <>
-              <h2 className='text-lg font-semibold mb-4'>
-                {formatPossessiveCompound(selectedDeckel.name)}
-              </h2>
+              <h2 className='text-lg font-semibold mb-4'>{selectedDeckel.name}</h2>
 
               <DeckelTable
                 selectedDeckel={selectedDeckel}
@@ -140,27 +149,31 @@ export const DeckelScreen: React.FC = () => {
               <ProductButtons
                 label='Stubbi'
                 icon='/images/strichliste-icons/icon-stubbi.png'
-                onAdd={(count) =>
-                  addTransaction(selectedDeckel.id, {
-                    date: new Date(),
-                    description: 'Stubbi',
-                    count,
-                    sum: -(count * 1.5),
-                  })
-                }
+                onAdd={(count) => {
+                  if (!isReadOnly) {
+                    addTransaction(selectedDeckel.id, {
+                      date: new Date(),
+                      description: 'Stubbi',
+                      count,
+                      sum: -(count * 1.5),
+                    });
+                  }
+                }}
               />
 
               <ProductButtons
                 label='Helles'
                 icon='/images/strichliste-icons/icon-helles.png'
-                onAdd={(count) =>
-                  addTransaction(selectedDeckel.id, {
-                    date: new Date(),
-                    description: 'Helles',
-                    count,
-                    sum: -(count * 2.0),
-                  })
-                }
+                onAdd={(count) => {
+                  if (!isReadOnly) {
+                    addTransaction(selectedDeckel.id, {
+                      date: new Date(),
+                      description: 'Helles',
+                      count,
+                      sum: -(count * 2.0),
+                    });
+                  }
+                }}
               />
             </>
           ) : deckelList.length > 0 ? (
@@ -191,10 +204,114 @@ export const DeckelScreen: React.FC = () => {
         isOpen={modals.addGuest}
         onClose={() => setModals((m) => ({ ...m, addGuest: false }))}
         existingNames={existingActiveNames}
-        onSave={(name) => {
-          const newId = addDeckel(name);
-          setSelectedDeckelId(newId);
-          setModals((m) => ({ ...m, addGuest: false }));
+        onSave={(name, useSameOwner) => {
+          if (isAddingDeckel) {
+            console.warn('onSave: already adding, ignoring duplicate call');
+            return;
+          }
+          setIsAddingDeckel(true);
+
+          try {
+            let ownerIdToUse: string | undefined = undefined;
+            // Possessiv-Basis (ohne "Deckel"), z. B. "Jannis"
+            const baseForMatch = toDeckelForm(name.trim());
+            const baseRoot = getRootName(baseForMatch);
+
+            // Comprehensive debug logs for matching
+            console.log('=== onSave START ===');
+            console.log('input name:', name);
+            console.log('baseForMatch:', baseForMatch, 'baseRoot:', baseRoot);
+            console.log(
+              'existing names:',
+              deckelList.map((d) => d.name)
+            );
+            console.log(
+              'existing roots:',
+              deckelList.map((d) => d.rootKey ?? getRootName(d.name))
+            );
+
+            // Check if a guest with the same root name already exists (any status)
+            const existingWithSameName = deckelList.filter((d) => {
+              const existingRoot = d.rootKey ?? getRootName(d.name);
+              return existingRoot === baseRoot;
+            });
+
+            if (existingWithSameName.length > 0) {
+              // Show confirm dialog asking if user really wants to create another guest with the same name
+              setPendingAddName(baseForMatch);
+              setPendingAddOwnerId(null);
+              openConfirm(
+                'delete',
+                `Es existiert bereits ein Gast namens "${baseForMatch}". Soll wirklich ein neuer Gast mit dem gleichen Namen erstellt werden?`,
+                'Ja, erstellen',
+                'ADD_DUPLICATE_CONFIRM'
+              );
+              setModals((m) => ({ ...m, confirm: true }));
+              console.log('=== onSave END (duplicate name confirm) ===');
+              setIsAddingDeckel(false);
+              return;
+            }
+
+            if (useSameOwner) {
+              // Suche Match per Root (robust)
+              const match = deckelList.find((d) => {
+                const existingRoot = d.rootKey ?? getRootName(d.name);
+                return existingRoot === baseRoot && d.status !== DECKEL_STATUS.BEZAHLT;
+              });
+
+              console.log('useSameOwner=true, match found:', !!match, match?.name);
+
+              if (match) {
+                const saldo = (match.transactions ?? []).reduce((s, t) => s + (t.sum ?? 0), 0);
+                console.log('match saldo:', saldo);
+
+                if (saldo === 0) {
+                  // Berechne finale Anzeigeform für Confirm
+                  const displayForPending = nextDisplayName(baseForMatch, deckelList);
+
+                  console.log('match found (saldo 0). match.name:', match.name);
+                  console.log('displayForPending:', displayForPending);
+
+                  setPendingAddName(displayForPending);
+                  setPendingAddOwnerId(match.ownerId ?? match.id);
+                  openConfirm(
+                    'delete',
+                    `Es existiert bereits ein aktiver Deckel "${match.name}" mit Saldo 0. Möchtest du trotzdem verknüpfen?`,
+                    'Verknüpfen',
+                    'ADD_MERGE_WARN'
+                  );
+                  setModals((m) => ({ ...m, confirm: true }));
+                  console.log('=== onSave END (merge confirm) ===');
+                  setIsAddingDeckel(false);
+                  return;
+                }
+
+                // sonst: direkt verknüpfen mit ownerId des Matches
+                ownerIdToUse = match.ownerId ?? match.id;
+                console.log('match found (saldo !== 0), using ownerIdToUse:', ownerIdToUse);
+              } else {
+                console.log('no match found');
+              }
+            }
+
+            // Do NOT open merge modal during guest creation.
+            // Simply create the new deckel (possibly numbered) and select it.
+            console.log(
+              'calling addDeckel with baseForMatch:',
+              baseForMatch,
+              'ownerIdToUse:',
+              ownerIdToUse
+            );
+            const newId = addDeckel(baseForMatch, ownerIdToUse);
+            console.log('addDeckel returned newId:', newId);
+            console.log('=== onSave END (add guest) ===');
+
+            setSelectedDeckelId(newId);
+            setModals((m) => ({ ...m, addGuest: false }));
+          } finally {
+            // Always reset guard to allow future submissions
+            setIsAddingDeckel(false);
+          }
         }}
       />
 
@@ -222,15 +339,80 @@ export const DeckelScreen: React.FC = () => {
 
       <ConfirmModal
         isOpen={modals.confirm}
+        title={confirmState.type === 'correction' ? 'Korrektur bestätigen' : undefined}
         message={confirmState.message}
         confirmLabel={confirmState.label}
+        showSavedInfo={false} // deaktiviert "Gespeicherte Information"
         onConfirm={() => {
+          // Handle special confirm payloads
+          if (confirmState.payload === 'ADD_MERGE_WARN') {
+            if (pendingAddName) {
+              const newId = addDeckel(pendingAddName, pendingAddOwnerId ?? undefined);
+              setSelectedDeckelId(newId);
+              setPendingAddName(null);
+              setPendingAddOwnerId(null);
+              setModals((m) => ({ ...m, addGuest: false, confirm: false }));
+              setIsAddingDeckel(false);
+              return;
+            }
+          } else if (confirmState.payload === 'ADD_DUPLICATE_CONFIRM') {
+            // User confirmed they want to create a guest with a duplicate name
+            if (pendingAddName) {
+              const newId = addDeckel(pendingAddName, undefined);
+              setSelectedDeckelId(newId);
+              setPendingAddName(null);
+              setPendingAddOwnerId(null);
+              setModals((m) => ({ ...m, addGuest: false, confirm: false }));
+              setIsAddingDeckel(false);
+              return;
+            }
+          }
+
+          // Standardpfade
           if (confirmState.type === 'delete') executeDelete();
           else if (confirmState.type === 'correction') executeCorrection();
           else if (confirmState.type === 'abend') executeAbend();
         }}
-        onCancel={closeConfirm}
+        onCancel={() => {
+          // Falls ein spezieller Pending‑Zustand existiert, aufräumen
+          if (confirmState.payload === 'ADD_MERGE_WARN') {
+            setPendingAddName(null);
+            setPendingAddOwnerId(null);
+            setIsAddingDeckel(false);
+          }
+          closeConfirm();
+        }}
       />
+
+      {/* MergeSelectModal removed: merge-on-create flow disabled. Guests are always added as new deckels. */}
+
+      {modals.mergeCorrection && (
+        <MergeCorrectionModal
+          candidates={mergeCandidates}
+          sourceId={pendingCorrectionDeckelId ?? ''}
+          onMerge={(targetId, options) => {
+            if (!pendingCorrectionDeckelId) return;
+            const res = mergeCorrectionIntoDeckel(targetId, pendingCorrectionDeckelId, {
+              note: options?.note,
+            });
+            console.log('mergeCorrectionIntoDeckel result:', res);
+            if (res.success) {
+              setSelectedDeckelId(res.targetId ?? targetId);
+              setModals((m) => ({ ...m, mergeCorrection: false, correction: false }));
+            } else {
+              console.warn('Merge correction failed:', res.message);
+            }
+          }}
+          onCreateNew={(name) => {
+            const newId = addDeckel(name || toDeckelForm(''), undefined);
+            setSelectedDeckelId(newId);
+            setModals((m) => ({ ...m, mergeCorrection: false, correction: false }));
+          }}
+          onCancel={() => {
+            setModals((m) => ({ ...m, mergeCorrection: false }));
+          }}
+        />
+      )}
     </div>
   );
 };
