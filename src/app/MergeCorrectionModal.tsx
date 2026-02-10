@@ -10,12 +10,7 @@ type Props = {
   onCancel: () => void;
 };
 
-export const MergeCorrectionModal: React.FC<Props> = ({
-  candidates,
-  onMerge,
-  onCreateNew,
-  onCancel,
-}) => {
+export const MergeCorrectionModal: React.FC<Props> = ({ candidates, onMerge, onCancel }) => {
   const [selected, setSelected] = useState<string | null>(null);
   const [isMerging, setIsMerging] = useState(false);
 
@@ -160,26 +155,6 @@ export const MergeCorrectionModal: React.FC<Props> = ({
             }}
           >
             {isMerging ? 'Wird zusammengeführt...' : 'Zusammenführen'}
-          </button>
-          <button
-            onClick={() => onCreateNew('')}
-            style={{
-              flex: '1 1 auto',
-              minWidth: 150,
-              padding: '12px 16px',
-              background: '#1e40af',
-              color: 'white',
-              border: 'none',
-              borderRadius: 6,
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={(e) => ((e.target as HTMLButtonElement).style.background = '#1e3a8a')}
-            onMouseLeave={(e) => ((e.target as HTMLButtonElement).style.background = '#1e40af')}
-          >
-            Neuer Deckel
           </button>
           <button
             onClick={onCancel}

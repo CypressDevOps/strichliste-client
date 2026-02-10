@@ -594,6 +594,96 @@ export const useDeckelState = () => {
     return { success: false, message: failReason ?? 'Merge could not be performed' };
   };
 
+  /**
+   * transferDeckels
+   * - Transfer transactions from source to target deckel.
+   * - If onlyNegative=true: transfers only negative (debt) transactions, leaves source with positive balance on OFFEN status
+   * - If onlyNegative=false: transfers all transactions, marks source as BEZAHLT with cleared transactions
+   * - Returns success info and original state for undo.
+   */
+  type TransferResult = {
+    success: boolean;
+    message?: string;
+    targetId?: string;
+    sourceId?: string;
+    undoSnapshot?: DeckelUIState[];
+  };
+
+  const transferDeckels = (
+    sourceId: string,
+    targetId: string,
+    onlyNegative = false
+  ): TransferResult => {
+    if (isAbendGeschlossen) return { success: false, message: 'Abend geschlossen' };
+    if (sourceId === targetId)
+      return { success: false, message: 'Source and target are identical' };
+
+    let undoSnapshot: DeckelUIState[] | undefined = undefined;
+    let performed = false;
+
+    setDeckelList((prev) => {
+      const source = prev.find((p) => p.id === sourceId);
+      const target = prev.find((p) => p.id === targetId);
+      if (!source || !target) return prev;
+
+      // Save state for undo
+      undoSnapshot = [...prev];
+
+      // Determine which transactions to transfer
+      let txsToTransfer: typeof source.transactions = [];
+      let remainingTxs: typeof source.transactions = [];
+
+      if (onlyNegative) {
+        // Separate negative (debt) and positive (credit) transactions
+        const sourceTxs = source.transactions ?? [];
+        txsToTransfer = sourceTxs.filter((t) => t.sum < 0);
+        remainingTxs = sourceTxs.filter((t) => t.sum >= 0);
+      } else {
+        // Transfer all transactions
+        txsToTransfer = source.transactions ?? [];
+        remainingTxs = [];
+      }
+
+      // Add marker to transferred transactions
+      const markedTxs = txsToTransfer.map((t) => ({
+        ...t,
+        description: `Übertragen von ${source.name} — ${t.description}`,
+      }));
+
+      performed = true;
+
+      // Add transactions to target and update source
+      return prev.map((d) => {
+        if (d.id === targetId) {
+          return {
+            ...d,
+            transactions: [...(d.transactions ?? []), ...markedTxs],
+            lastActivity: new Date(),
+            isActive: true,
+          };
+        }
+        if (d.id === sourceId) {
+          return {
+            ...d,
+            // If onlyNegative and has remaining positive txs: stay OFFEN; otherwise: become BEZAHLT
+            status:
+              onlyNegative && remainingTxs.length > 0 ? DECKEL_STATUS.OFFEN : DECKEL_STATUS.BEZAHLT,
+            transactions: remainingTxs,
+            isActive: remainingTxs.length > 0,
+          };
+        }
+        return d;
+      });
+    });
+
+    if (performed) {
+      console.log('transferDeckels', { sourceId, targetId, onlyNegative });
+      return { success: true, targetId, sourceId, undoSnapshot };
+    }
+
+    return { success: false, message: 'Transfer could not be performed' };
+  };
+
   return {
     deckelList,
     selectedDeckel,
@@ -613,5 +703,6 @@ export const useDeckelState = () => {
     mergeDeckelInto,
     mergeInputIntoDeckel,
     mergeCorrectionIntoDeckel,
+    transferDeckels,
   };
 };

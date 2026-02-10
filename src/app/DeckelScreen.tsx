@@ -12,6 +12,8 @@ import { DeckelFormModal } from './DeckelFormModal';
 import { TransactionModal } from './TransactionModal';
 import { CorrectionModal } from './CorrectionModal';
 import { ConfirmModal } from './ConfirmModal';
+import CashierModal from './CashierModal';
+import DeckeltransferModal from './DeckeltransferModal';
 
 import deckelBackground from '../assets/Deckelhintergrund.png';
 import paidDeckelBackground from '../assets/bezahlt-deckckel.png';
@@ -32,6 +34,8 @@ export const DeckelScreen: React.FC = () => {
   const [pendingAddName, setPendingAddName] = useState<string | null>(null);
   const [pendingAddOwnerId, setPendingAddOwnerId] = useState<string | null>(null);
   const [isAddingDeckel, setIsAddingDeckel] = useState(false);
+  const [cassierModalOpen, setCassierModalOpen] = useState(false);
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
 
   const {
     deckelList,
@@ -46,6 +50,7 @@ export const DeckelScreen: React.FC = () => {
     updateDeckelStatus,
     mergeDeckelInto,
     mergeCorrectionIntoDeckel,
+    transferDeckels,
   } = useDeckelState();
 
   const {
@@ -198,12 +203,12 @@ export const DeckelScreen: React.FC = () => {
         hasTransactions={hasTransactions}
         darfDeckelGezahltWerden={darfDeckelGezahltWerden}
         darfKorrigieren={darfKorrigieren}
+        hasMultipleDeckel={deckelList.length >= 2}
         onAddGuest={() => setModals((m) => ({ ...m, addGuest: true }))}
         onDeleteGuest={openDeleteConfirm}
-        onOpenEinzahlung={() => setModals((m) => ({ ...m, transaction: true }))}
+        onOpenCashier={() => setCassierModalOpen(true)}
         onOpenCorrection={() => setModals((m) => ({ ...m, correction: true }))}
         onAbendAbschliessen={openAbendConfirm}
-        onPayDeckel={() => setModals((m) => ({ ...m, pay: true }))}
       />
 
       <DeckelFormModal
@@ -326,6 +331,10 @@ export const DeckelScreen: React.FC = () => {
       <PayDeckelModal
         isOpen={modals.pay}
         onClose={() => setModals((m) => ({ ...m, pay: false }))}
+        onGoBack={() => {
+          setModals((m) => ({ ...m, pay: false }));
+          setCassierModalOpen(true);
+        }}
         totalSum={totalSum}
         onConfirm={handlePayConfirm}
       />
@@ -333,6 +342,10 @@ export const DeckelScreen: React.FC = () => {
       <TransactionModal
         isOpen={modals.transaction}
         onClose={() => setModals((m) => ({ ...m, transaction: false }))}
+        onGoBack={() => {
+          setModals((m) => ({ ...m, transaction: false }));
+          setCassierModalOpen(true);
+        }}
         presets={[5, 10, 20, 50]}
         onConfirm={handleTransactionConfirm}
       />
@@ -423,6 +436,37 @@ export const DeckelScreen: React.FC = () => {
           }}
         />
       )}
+
+      <CashierModal
+        isOpen={cassierModalOpen}
+        onClose={() => setCassierModalOpen(false)}
+        onSelectEinzahlung={() => setModals((m) => ({ ...m, transaction: true }))}
+        onSelectZahlen={() => setModals((m) => ({ ...m, pay: true }))}
+        onSelectUebertrag={() => {
+          setCassierModalOpen(false);
+          setTransferModalOpen(true);
+        }}
+      />
+
+      <DeckeltransferModal
+        isOpen={transferModalOpen}
+        deckelList={deckelList}
+        selectedDeckelId={selectedDeckelId}
+        onClose={() => setTransferModalOpen(false)}
+        onGoBack={() => {
+          setTransferModalOpen(false);
+          setCassierModalOpen(true);
+        }}
+        onConfirm={(sourceId, targetId, onlyNegative = false) => {
+          const result = transferDeckels(sourceId, targetId, onlyNegative);
+          if (result.success) {
+            console.log('Transfer successful', result);
+            setSelectedDeckelId(targetId);
+          } else {
+            console.warn('Transfer failed:', result.message);
+          }
+        }}
+      />
     </div>
   );
 };

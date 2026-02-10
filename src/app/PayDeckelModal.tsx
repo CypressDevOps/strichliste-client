@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 interface PayDeckelModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onGoBack?: () => void;
   totalSum: number;
   onConfirm: (amount: number) => void;
 }
@@ -10,6 +11,7 @@ interface PayDeckelModalProps {
 export const PayDeckelModal: React.FC<PayDeckelModalProps> = ({
   isOpen,
   onClose,
+  onGoBack,
   totalSum,
   onConfirm,
 }) => {
@@ -87,8 +89,11 @@ export const PayDeckelModal: React.FC<PayDeckelModalProps> = ({
           </button>
         </div>
 
-        <button className='mt-4 text-gray-300 underline' onClick={onClose}>
-          Abbrechen
+        <button
+          className='mt-4 text-gray-300 underline'
+          onClick={() => (onGoBack ? onGoBack() : onClose())}
+        >
+          {onGoBack ? '< Zurück' : 'Abbrechen'}
         </button>
       </div>
     </div>

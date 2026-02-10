@@ -11,11 +11,11 @@ interface DeckelFooterProps {
   hasTransactions: boolean;
   darfDeckelGezahltWerden: boolean;
   darfKorrigieren: boolean;
+  hasMultipleDeckel: boolean;
 
   onAddGuest: () => void;
   onDeleteGuest: () => void;
-  onOpenEinzahlung: () => void;
-  onPayDeckel: () => void;
+  onOpenCashier: () => void;
   onOpenCorrection: () => void;
   onAbendAbschliessen: () => void;
 }
@@ -27,10 +27,10 @@ export const DeckelFooter: React.FC<DeckelFooterProps> = ({
   isReadOnly,
   darfDeckelGezahltWerden,
   darfKorrigieren,
+  hasMultipleDeckel,
   onAddGuest,
   onDeleteGuest,
-  onOpenEinzahlung,
-  onPayDeckel,
+  onOpenCashier,
   onOpenCorrection,
   onAbendAbschliessen,
 }) => {
@@ -75,34 +75,15 @@ export const DeckelFooter: React.FC<DeckelFooterProps> = ({
       {/* Rechte Seite */}
       <div className='flex items-center gap-2 flex-wrap justify-end max-w-full mr-10'>
         <button
-          onClick={onOpenEinzahlung}
-          disabled={
-            isReadOnly ||
-            !isSelectedPresent ||
-            selectedDeckel?.status !== 'OFFEN' ||
-            isAbendGeschlossen
-          }
+          onClick={onOpenCashier}
+          disabled={!hasMultipleDeckel || isAbendGeschlossen}
           className={`px-4 py-2 text-base font-bold rounded shadow transition ${
-            isReadOnly
-              ? 'bg-blue-900/30 text-white/60 opacity-50 pointer-events-none'
-              : isSelectedPresent && selectedDeckel?.status === 'OFFEN' && !isAbendGeschlossen
-                ? 'bg-blue-600 text-white hover:bg-blue-800'
-                : 'bg-blue-900/30 text-white/60 cursor-not-allowed'
+            !hasMultipleDeckel || isAbendGeschlossen
+              ? 'bg-blue-900/30 text-white/60 cursor-not-allowed'
+              : 'bg-blue-600 text-white hover:bg-blue-800'
           }`}
         >
-          Einzahlung
-        </button>
-
-        <button
-          onClick={onPayDeckel}
-          disabled={!selectedDeckel || !darfDeckelGezahltWerden}
-          className={`px-5 py-2 font-bold text-base rounded shadow transition ${
-            selectedDeckel && darfDeckelGezahltWerden
-              ? 'bg-green-500 text-white hover:bg-green-600'
-              : 'bg-green-900/30 text-white/60 cursor-not-allowed'
-          }`}
-        >
-          Deckel zahlen
+          Kassieren
         </button>
 
         <button

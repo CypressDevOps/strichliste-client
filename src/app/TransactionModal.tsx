@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  onGoBack?: () => void;
   onConfirm: (amount: number) => void;
   presets?: number[]; // z. B. [5,10,20,50]
   currency?: string; // z. B. '€'
@@ -12,6 +13,7 @@ interface Props {
 export const TransactionModal: React.FC<Props> = ({
   isOpen,
   onClose,
+  onGoBack,
   onConfirm,
   presets = [5, 10, 20, 50],
   currency = '€',
@@ -122,8 +124,11 @@ export const TransactionModal: React.FC<Props> = ({
         {error && <p className='text-red-700 text-sm mb-2'>{error}</p>}
 
         <div className='flex justify-end gap-2 mt-4'>
-          <button onClick={onClose} className='px-4 py-2 bg-gray-700 rounded hover:bg-gray-800'>
-            Abbrechen
+          <button
+            onClick={() => (onGoBack ? onGoBack() : onClose())}
+            className='px-4 py-2 bg-gray-700 rounded hover:bg-gray-800'
+          >
+            {onGoBack ? '< Zurück' : 'Abbrechen'}
           </button>
           <button
             onClick={handleConfirm}
