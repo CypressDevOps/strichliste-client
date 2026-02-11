@@ -6,7 +6,7 @@ interface PayDeckelModalProps {
   onClose: () => void;
   onGoBack?: () => void;
   totalSum: number;
-  onConfirm: (amount: number, deckelId?: string) => void;
+  onConfirm: (amount: number, deckelId?: string, moveToGone?: boolean) => void;
   deckelList?: DeckelUIState[];
   selectedDeckelId: string | null;
 }
@@ -24,6 +24,7 @@ export const PayDeckelModal: React.FC<PayDeckelModalProps> = ({
   const [internalSelectedDeckelId, setInternalSelectedDeckelId] = useState<string | null>(
     selectedDeckelId
   );
+  const [pendingPayment, setPendingPayment] = useState<{ amount: number } | null>(null);
 
   if (!isOpen) return null;
 
@@ -137,6 +138,60 @@ export const PayDeckelModal: React.FC<PayDeckelModalProps> = ({
 
   const abs = Math.abs(currentTotalSum);
 
+  // --- Rückgeld-Auswahl Modal ---
+  if (pendingPayment) {
+    const change = pendingPayment.amount - abs;
+    return (
+      <div className='fixed inset-0 bg-black/70 flex items-center justify-center z-50'>
+        <div className='bg-gray-800 p-6 rounded-lg w-80 text-white'>
+          <h2 className='text-xl font-bold mb-4'>Zahlungsart wählen</h2>
+
+          <div className='mb-4 p-3 bg-gray-700 rounded'>
+            <p className='text-sm text-gray-300'>
+              Deckelbetrag: <span className='font-bold text-white'>{abs.toFixed(2)} €</span>
+            </p>
+            <p className='text-sm text-gray-300'>
+              Gezahlter Betrag:{' '}
+              <span className='font-bold text-white'>{pendingPayment.amount.toFixed(2)} €</span>
+            </p>
+            <p className='text-sm text-green-400 font-bold mt-2'>Rückgeld: {change.toFixed(2)} €</p>
+          </div>
+
+          <div className='flex flex-col gap-3'>
+            <button
+              className='bg-blue-700 hover:bg-blue-600 py-3 rounded font-semibold'
+              onClick={() => {
+                // Rückgeld: Exakt den Deckelbetrag zahlen
+                onConfirm(abs, internalSelectedDeckelId ?? undefined);
+                setPendingPayment(null);
+              }}
+            >
+              Mit Rückgeld ({change.toFixed(2)} €)
+            </button>
+
+            <button
+              className='bg-green-700 hover:bg-green-600 py-3 rounded font-semibold'
+              onClick={() => {
+                // Guthaben: Den vollen Betrag zahlen (erzeugt Guthaben) und Deckel nach GONE verschieben
+                onConfirm(pendingPayment.amount, internalSelectedDeckelId ?? undefined, true);
+                setPendingPayment(null);
+              }}
+            >
+              Als Guthaben behalten
+            </button>
+
+            <button
+              className='mt-2 text-gray-300 underline'
+              onClick={() => setPendingPayment(null)}
+            >
+              Zurück
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // --- Vorschlagslogik ---
   let tierMin: number | null = null;
   if (abs > 0 && abs <= 5) tierMin = 5;
@@ -195,6 +250,13 @@ export const PayDeckelModal: React.FC<PayDeckelModalProps> = ({
       alert('Betrag ist zu groß.');
       return;
     }
+
+    // Prüfe auf Überzahlung
+    if (amount > abs) {
+      setPendingPayment({ amount });
+      return;
+    }
+
     onConfirm(amount, internalSelectedDeckelId ?? undefined);
   };
 
@@ -207,15 +269,25 @@ export const PayDeckelModal: React.FC<PayDeckelModalProps> = ({
 
         {/* Vorschläge */}
         <div className='flex flex-col gap-3 mb-4'>
-          {suggestions.map((s, index) => (
+          {suggestions.map((s) => (
             <button
               key={s.label}
-              className={`py-2 rounded ${
-                index === 0
-                  ? 'bg-green-900 border border-green-400'
-                  : 'bg-green-700 hover:bg-green-600'
-              }`}
-              onClick={() => onConfirm(s.value, internalSelectedDeckelId ?? undefined)}
+              className='bg-green-700 hover:bg-green-600 py-2 rounded'
+              onClick={() => {
+                // "Passend" zahlt immer exakt den Betrag
+                if (s.label === 'Passend') {
+                  onConfirm(s.value, internalSelectedDeckelId ?? undefined);
+                  return;
+                }
+
+                // Andere Beträge: Prüfe auf Überzahlung
+                if (s.value > abs) {
+                  setPendingPayment({ amount: s.value });
+                  return;
+                }
+
+                onConfirm(s.value, internalSelectedDeckelId ?? undefined);
+              }}
             >
               {s.label}
             </button>

@@ -288,7 +288,7 @@ export const useDeckelUIState = ({
     setModals((m) => ({ ...m, confirm: false }));
   };
 
-  const handlePayConfirm = (amount: number, deckelId?: string) => {
+  const handlePayConfirm = (amount: number, deckelId?: string, moveToGone?: boolean) => {
     const targetDeckelId = deckelId ?? selectedDeckelId;
     if (!targetDeckelId) return;
 
@@ -309,6 +309,9 @@ export const useDeckelUIState = ({
 
     if (newSum === 0) {
       markDeckelAsPaid(targetDeckelId, true);
+    } else if (moveToGone) {
+      // Wenn Guthaben gewählt wurde, verschiebe Deckel nach GONE
+      updateDeckelStatus(targetDeckelId, DECKEL_STATUS.GONE);
     }
 
     // If a specific deckel was passed and it's different from current selection, select it
