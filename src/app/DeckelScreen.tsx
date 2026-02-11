@@ -10,6 +10,7 @@ import { DeckelTable } from './components/DeckelTable';
 import { CategorySelector } from './components/CategorySelector';
 import { ProductGrid } from './components/ProductGrid';
 import { DeckelFooter } from './components/DeckelFooter';
+import { DailySalesOverview } from './components/DailySalesOverview';
 
 import { DeckelFormModal } from './DeckelFormModal';
 import { TransactionModal } from './TransactionModal';
@@ -26,6 +27,9 @@ import { useIsMobile } from './hooks/useIsMobile';
 import { PayDeckelModal } from './PayDeckelModal';
 import MergeCorrectionModal from './MergeCorrectionModal';
 import { AdminModal } from './AdminModal';
+import { CashReportModal } from './CashReportModal';
+import { DeckelOverviewModal } from './DeckelOverviewModal';
+import { EmergencyOverrideModal } from './EmergencyOverrideModal';
 import { DECKEL_STATUS } from '../domain/models';
 import {
   toDeckelForm,
@@ -44,10 +48,30 @@ export const DeckelScreen: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory | null>(null);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const [isCashReportOpen, setIsCashReportOpen] = useState(false);
+  const [isDeckelOverviewOpen, setIsDeckelOverviewOpen] = useState(false);
+  const [isMenuDropdownOpen, setIsMenuDropdownOpen] = useState(false);
+  const [isEmergencyOverrideOpen, setIsEmergencyOverrideOpen] = useState(false);
+  const [emergencyOverrideActive, setEmergencyOverrideActive] = useState(false);
 
   useEffect(() => {
     setProducts(productService.getActiveProducts());
   }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!isMenuDropdownOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.menu-dropdown-container')) {
+        setIsMenuDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [isMenuDropdownOpen]);
 
   const {
     deckelList,
@@ -63,7 +87,7 @@ export const DeckelScreen: React.FC = () => {
     mergeDeckelInto,
     mergeCorrectionIntoDeckel,
     transferDeckels,
-  } = useDeckelState();
+  } = useDeckelState(emergencyOverrideActive);
 
   const {
     selectedDeckel,
@@ -115,7 +139,7 @@ export const DeckelScreen: React.FC = () => {
     darfDeckelGezahltWerden,
     totalSum,
     darfKorrigieren,
-  } = useDeckelComputed(selectedDeckel, isAbendGeschlossen);
+  } = useDeckelComputed(selectedDeckel, emergencyOverrideActive ? false : isAbendGeschlossen);
 
   const isMobile = useIsMobile();
 
@@ -141,14 +165,70 @@ export const DeckelScreen: React.FC = () => {
         <h1 className='text-green-600 text-2xl font-bold'>
           Deckelübersicht – {new Date().toLocaleDateString()}
         </h1>
-        <button
-          onClick={() => setIsAdminModalOpen(true)}
-          className='text-gray-400 hover:text-white text-3xl font-bold px-3 py-1 transition'
-          title='Admin Konsole'
-        >
-          ⋮
-        </button>
+        <div className='relative menu-dropdown-container'>
+          <button
+            onClick={() => setIsMenuDropdownOpen(!isMenuDropdownOpen)}
+            className='text-gray-400 hover:text-white text-3xl font-bold px-3 py-1 transition'
+            title='Menü'
+          >
+            ⋮
+          </button>
+          {isMenuDropdownOpen && (
+            <div className='absolute right-0 mt-2 w-56 bg-gray-800 rounded-lg shadow-lg z-50 border border-gray-700'>
+              <button
+                onClick={() => {
+                  setIsDeckelOverviewOpen(true);
+                  setIsMenuDropdownOpen(false);
+                }}
+                className='w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition'
+              >
+                Deckelübersicht
+              </button>
+              <button
+                onClick={() => {
+                  setIsCashReportOpen(true);
+                  setIsMenuDropdownOpen(false);
+                }}
+                className='w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition'
+              >
+                Kassenberichte
+              </button>
+              <button
+                onClick={() => {
+                  setIsAdminModalOpen(true);
+                  setIsMenuDropdownOpen(false);
+                }}
+                className='w-full text-left px-4 py-3 text-white hover:bg-gray-700 rounded-t-lg transition'
+              >
+                Produktverwaltung
+              </button>
+              <button
+                onClick={() => {
+                  setIsEmergencyOverrideOpen(true);
+                  setIsMenuDropdownOpen(false);
+                }}
+                className='w-full text-left px-4 py-3 text-white hover:bg-gray-700 rounded-b-lg transition border-t border-gray-600'
+              >
+                <span className='flex items-center gap-2'>
+                  ⚠️ Notfall-Modus
+                  {emergencyOverrideActive && (
+                    <span className='text-xs bg-yellow-600 px-2 py-1 rounded'>AKTIV</span>
+                  )}
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
       </header>
+
+      {/* Emergency Override Warning Banner */}
+      {emergencyOverrideActive && (
+        <div className='bg-yellow-600 text-black px-4 py-2 text-center font-bold flex items-center justify-center gap-2'>
+          <span>⚠️</span>
+          <span>NOTFALL-MODUS AKTIV - Alle Sicherheitssperren deaktiviert</span>
+          <span>⚠️</span>
+        </div>
+      )}
 
       <div className='flex flex-1 flex-col lg:flex-row gap-0 overflow-hidden'>
         <GuestList
@@ -200,15 +280,13 @@ export const DeckelScreen: React.FC = () => {
               )}
             </>
           ) : deckelList.length > 0 ? (
-            <p className='text-gray-300 text-xl font-semibold mt-6'>
-              Wählen Sie einen Gast aus, um die Details anzuzeigen.
-            </p>
+            <DailySalesOverview deckelList={deckelList} />
           ) : null}
         </div>
       </div>
 
       <DeckelFooter
-        isAbendGeschlossen={isAbendGeschlossen}
+        isAbendGeschlossen={emergencyOverrideActive ? false : isAbendGeschlossen}
         isSelectedPresent={isSelectedPresent}
         selectedDeckel={selectedDeckel}
         isReadOnly={isReadOnly}
@@ -492,6 +570,21 @@ export const DeckelScreen: React.FC = () => {
           setIsAdminModalOpen(false);
           setProducts(productService.getActiveProducts());
         }}
+      />
+
+      <CashReportModal isOpen={isCashReportOpen} onClose={() => setIsCashReportOpen(false)} />
+
+      <DeckelOverviewModal
+        isOpen={isDeckelOverviewOpen}
+        onClose={() => setIsDeckelOverviewOpen(false)}
+        deckelList={deckelList}
+      />
+
+      <EmergencyOverrideModal
+        isOpen={isEmergencyOverrideOpen}
+        onClose={() => setIsEmergencyOverrideOpen(false)}
+        onConfirm={() => setEmergencyOverrideActive(!emergencyOverrideActive)}
+        currentState={emergencyOverrideActive}
       />
     </div>
   );

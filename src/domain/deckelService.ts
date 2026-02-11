@@ -7,6 +7,7 @@ import {
   nextDisplayName,
   toDeckelForm,
 } from '../utils/nameUtils';
+import { saveDailyRevenue } from './cashReportService';
 // -----------------------------
 // ID GENERATOR
 // -----------------------------
@@ -184,7 +185,7 @@ const loadInitialState = (): {
 // -----------------------------
 // HOOK
 // -----------------------------
-export const useDeckelState = () => {
+export const useDeckelState = (emergencyOverride: boolean = false) => {
   const initial = loadInitialState();
 
   const [deckelList, setDeckelList] = useState<DeckelUIState[]>(() => {
@@ -244,7 +245,7 @@ export const useDeckelState = () => {
   // Ersetze deine vorhandene addDeckel-Funktion durch diese// Pfad anpassen
 
   const addDeckel = (name: string, ownerId?: string): string => {
-    if (isAbendGeschlossen) return '';
+    if (isAbendGeschlossen && !emergencyOverride) return '';
     const trimmed = name.trim();
     if (!trimmed) return '';
 
@@ -316,7 +317,7 @@ export const useDeckelState = () => {
   };
 
   const deleteDeckel = (id: string): boolean => {
-    if (isAbendGeschlossen) return false;
+    if (isAbendGeschlossen && !emergencyOverride) return false;
 
     let removed = false;
     setDeckelList((prev) => {
@@ -328,7 +329,7 @@ export const useDeckelState = () => {
   };
 
   const addTransaction = (deckelId: string, tx: Transaction) => {
-    if (isAbendGeschlossen) return;
+    if (isAbendGeschlossen && !emergencyOverride) return;
 
     const deckel = deckelList.find((d) => d.id === deckelId);
     if (!deckel) return;
@@ -350,7 +351,7 @@ export const useDeckelState = () => {
   };
 
   const removeTransaction = (deckelId: string, txId: string) => {
-    if (isAbendGeschlossen) return;
+    if (isAbendGeschlossen && !emergencyOverride) return;
 
     setDeckelList((prev) =>
       prev.map((d) => {
@@ -362,7 +363,7 @@ export const useDeckelState = () => {
   };
 
   const removeTransactionFlexible = (deckelId: string, txIdOrIdx: string) => {
-    if (isAbendGeschlossen) return;
+    if (isAbendGeschlossen && !emergencyOverride) return;
 
     setDeckelList((prev) =>
       prev.map((d) => {
@@ -390,7 +391,7 @@ export const useDeckelState = () => {
    * sorgt für konsistente Flags (isActive/isSelected/lastActivity)
    */
   const updateDeckelStatus = (id: string, status: DeckelStatus) => {
-    if (isAbendGeschlossen) return;
+    if (isAbendGeschlossen && !emergencyOverride) return;
 
     setDeckelList((prev) =>
       prev.map((d) => {
@@ -450,6 +451,20 @@ export const useDeckelState = () => {
   const abendAbschliessen = () => {
     const now = new Date();
 
+    // Berechne den Gesamtumsatz (alle Zahlungs-Transaktionen)
+    let totalRevenue = 0;
+    deckelList.forEach((deckel) => {
+      deckel.transactions?.forEach((tx) => {
+        // Nur positive Zahlungen zählen (Einzahlungen vom Gast)
+        if (tx.description === 'Zahlung' && tx.sum > 0) {
+          totalRevenue += tx.sum;
+        }
+      });
+    });
+
+    // Speichere den Umsatz
+    saveDailyRevenue(totalRevenue);
+
     // Atomare State-Updates: alle Änderungen in einem setState
     setDeckelList((prev) =>
       prev.map((deckel) => {
@@ -481,7 +496,7 @@ export const useDeckelState = () => {
   };
 
   const markDeckelAsPaid = (deckelId: string, paid: boolean = true) => {
-    if (isAbendGeschlossen) return;
+    if (isAbendGeschlossen && !emergencyOverride) return;
 
     setDeckelList((prev) =>
       prev.map((d) =>
@@ -505,7 +520,7 @@ export const useDeckelState = () => {
    * - atomar mit Rollback bei Fehlern
    */
   const mergeDeckelInto = (fromId: string, toId: string, excludeTxId?: string) => {
-    if (isAbendGeschlossen) return;
+    if (isAbendGeschlossen && !emergencyOverride) return;
     if (fromId === toId) {
       console.error('mergeDeckelInto: Cannot merge into self');
       return;
@@ -588,7 +603,7 @@ export const useDeckelState = () => {
     possBase: string,
     ownerId?: string
   ): { success: boolean; targetId?: string } => {
-    if (isAbendGeschlossen) return { success: false };
+    if (isAbendGeschlossen && !emergencyOverride) return { success: false };
 
     let found = false;
     setDeckelList((prev) => {
@@ -631,7 +646,8 @@ export const useDeckelState = () => {
     sourceId: string,
     options?: { note?: string; userId?: string; excludeTxId?: string }
   ): MergeResult => {
-    if (isAbendGeschlossen) return { success: false, message: 'Abend geschlossen' };
+    if (isAbendGeschlossen && !emergencyOverride)
+      return { success: false, message: 'Abend geschlossen' };
 
     let performed = false;
     let removedId: string | undefined = undefined;
@@ -713,7 +729,8 @@ export const useDeckelState = () => {
     targetId: string,
     onlyNegative = false
   ): TransferResult => {
-    if (isAbendGeschlossen) return { success: false, message: 'Abend geschlossen' };
+    if (isAbendGeschlossen && !emergencyOverride)
+      return { success: false, message: 'Abend geschlossen' };
     if (sourceId === targetId)
       return { success: false, message: 'Source and target are identical' };
 
