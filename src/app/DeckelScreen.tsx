@@ -203,7 +203,7 @@ export const DeckelScreen: React.FC = () => {
         hasTransactions={hasTransactions}
         darfDeckelGezahltWerden={darfDeckelGezahltWerden}
         darfKorrigieren={darfKorrigieren}
-        hasMultipleDeckel={deckelList.length >= 2}
+        hasMultipleDeckel={deckelList.length >= 1}
         onAddGuest={() => setModals((m) => ({ ...m, addGuest: true }))}
         onDeleteGuest={openDeleteConfirm}
         onOpenCashier={() => setCassierModalOpen(true)}
@@ -329,6 +329,7 @@ export const DeckelScreen: React.FC = () => {
       />
 
       <PayDeckelModal
+        key={modals.pay ? 'open' : 'closed'}
         isOpen={modals.pay}
         onClose={() => setModals((m) => ({ ...m, pay: false }))}
         onGoBack={() => {
@@ -337,9 +338,12 @@ export const DeckelScreen: React.FC = () => {
         }}
         totalSum={totalSum}
         onConfirm={handlePayConfirm}
+        deckelList={deckelList}
+        selectedDeckelId={selectedDeckelId}
       />
 
       <TransactionModal
+        key={modals.transaction ? 'open' : 'closed'}
         isOpen={modals.transaction}
         onClose={() => setModals((m) => ({ ...m, transaction: false }))}
         onGoBack={() => {
@@ -348,6 +352,8 @@ export const DeckelScreen: React.FC = () => {
         }}
         presets={[5, 10, 20, 50]}
         onConfirm={handleTransactionConfirm}
+        deckelList={deckelList}
+        selectedDeckelId={selectedDeckelId}
       />
 
       <CorrectionModal

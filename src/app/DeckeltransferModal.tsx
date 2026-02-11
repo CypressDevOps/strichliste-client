@@ -13,16 +13,42 @@ type Props = {
 export const DeckeltransferModal: React.FC<Props> = ({
   isOpen,
   deckelList,
-  selectedDeckelId,
   onClose,
   onGoBack,
   onConfirm,
 }) => {
-  const [sourceDeckelId, setSourceDeckelId] = useState<string | null>(selectedDeckelId);
+  const [sourceDeckelId, setSourceDeckelId] = useState<string | null>(null);
   const [targetDeckelId, setTargetDeckelId] = useState<string | null>(null);
   const [warnModal, setWarnModal] = useState<'balance' | null>(null);
 
   if (!isOpen) return null;
+
+  // Prüfe ob es mindestens 2 Deckel mit Status OFFEN oder GONE gibt (BEZAHLT ignorieren)
+  const transferableDeckel = deckelList.filter((d) => d.status !== 'BEZAHLT');
+  if (transferableDeckel.length < 2) {
+    return (
+      <div
+        className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'
+        role='dialog'
+        aria-modal='true'
+      >
+        <div className='bg-white rounded-lg w-11/12 max-w-sm p-6 shadow-lg'>
+          <h2 className='text-lg font-semibold text-orange-600 mb-4'>
+            ℹ️ Übertragung nicht möglich
+          </h2>
+          <p className='text-gray-700 mb-6'>Kein weiterer Gast zum Übertragen vorhanden.</p>
+          <div className='flex justify-end gap-3'>
+            <button
+              onClick={() => (onGoBack ? onGoBack() : onClose())}
+              className='px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 font-semibold'
+            >
+              {onGoBack ? 'Zurück' : 'OK'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const sourceDeckel = deckelList.find((d) => d.id === sourceDeckelId);
 
@@ -35,12 +61,48 @@ export const DeckeltransferModal: React.FC<Props> = ({
   const negativeTransactions = sourceDeckel?.transactions?.filter((t) => t.sum < 0) ?? [];
   const hasPositiveTransactions = sourceDeckel?.transactions?.some((t) => t.sum > 0) ?? false;
 
-  // Nur Deckel, die als Source möglich sind (alle außer BEZAHLT)
-  const availableSources = deckelList.filter((d) => d.status !== 'BEZAHLT');
+  // Nur Deckel mit Status OFFEN oder GONE und Schulden (Gesamtergebnis < 0) als Source-Optionen
+  const availableSources = deckelList.filter((d) => {
+    if (d.status === 'BEZAHLT') return false;
+    // OFFEN und GONE können als Source verwendet werden
+    if (d.status !== 'OFFEN' && d.status !== 'GONE') return false;
+    const balance = (d.transactions ?? []).reduce((s, t) => s + t.sum, 0);
+    return balance < 0;
+  });
 
-  // Nur aktive Deckel (OFFEN) zeigen, die nicht die Source sind
+  // Prüfe ob es überhaupt Deckel mit Schulden gibt
+  if (availableSources.length === 0) {
+    return (
+      <div
+        className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'
+        role='dialog'
+        aria-modal='true'
+      >
+        <div className='bg-white rounded-lg w-11/12 max-w-sm p-6 shadow-lg'>
+          <h2 className='text-lg font-semibold text-orange-600 mb-4'>
+            ℹ️ Übertragung nicht möglich
+          </h2>
+          <p className='text-gray-700 mb-6'>
+            Es gibt keinen Gast mit Schulden, der übertragen werden kann.
+          </p>
+          <div className='flex justify-end gap-3'>
+            <button
+              onClick={() => (onGoBack ? onGoBack() : onClose())}
+              className='px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 font-semibold'
+            >
+              {onGoBack ? 'Zurück' : 'OK'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Deckel mit Status OFFEN oder GONE als Target-Optionen, außer Source selbst
   const availableTargets = sourceDeckel
-    ? deckelList.filter((d) => d.id !== sourceDeckelId && d.status === 'OFFEN')
+    ? deckelList.filter(
+        (d) => d.id !== sourceDeckelId && (d.status === 'OFFEN' || d.status === 'GONE')
+      )
     : [];
 
   const targetDeckel = availableTargets.find((d) => d.id === targetDeckelId);
@@ -54,11 +116,11 @@ export const DeckeltransferModal: React.FC<Props> = ({
       return;
     }
 
-    // Wenn negative Balance aber positive Transaktionen vorhanden, nur negative übertragen
-    const onlyNegative = sourceTotalBalance < 0 && hasPositiveTransactions;
+    // Wenn positive Transaktionen vorhanden sind, nur negative übertragen (kein Guthaben)
+    const onlyNegative = hasPositiveTransactions;
 
     onConfirm(sourceDeckelId, targetDeckelId, onlyNegative);
-    setSourceDeckelId(selectedDeckelId);
+    setSourceDeckelId(null);
     setTargetDeckelId(null);
     onClose();
   };
@@ -150,7 +212,7 @@ export const DeckeltransferModal: React.FC<Props> = ({
                 {sourceTotalBalance.toFixed(2)} €
               </span>
             </div>
-            {hasPositiveTransactions && sourceTotalBalance < 0 && (
+            {hasPositiveTransactions && (
               <div className='text-xs text-amber-600 mt-2 italic'>
                 ℹ️ Nur Schuldenbeträge werden übertragen, Guthaben bleibt beim Gast.
               </div>
@@ -159,7 +221,7 @@ export const DeckeltransferModal: React.FC<Props> = ({
         )}
 
         {/* Target Selection */}
-        {sourceDeckel && sourceTotalBalance < 0 && (
+        {sourceDeckel && (
           <div className='mb-6'>
             <label className='text-sm font-semibold text-gray-700 mb-2 block'>
               An: Gast auswählen
@@ -184,12 +246,11 @@ export const DeckeltransferModal: React.FC<Props> = ({
         )}
 
         {/* Target Preview */}
-        {targetDeckel && sourceDeckel && sourceTotalBalance < 0 && (
+        {targetDeckel && sourceDeckel && (
           <div className='mb-6 p-3 bg-green-50 rounded border border-green-200'>
             <div className='text-sm text-gray-700 mb-2'>
               <strong>
-                Saldo nach Übertragung
-                {hasPositiveTransactions && sourceTotalBalance < 0 ? ' (nur Schulden)' : ''}:
+                Saldo nach Übertragung{hasPositiveTransactions ? ' (nur Schulden)' : ''}:
               </strong>
             </div>
             <div className='text-base font-semibold text-green-900'>
@@ -210,13 +271,13 @@ export const DeckeltransferModal: React.FC<Props> = ({
             onClick={() => (onGoBack ? onGoBack() : onClose())}
             className='px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 font-semibold'
           >
-            {onGoBack ? '< Zurück' : 'Abbrechen'}
+            {onGoBack ? 'Zurück' : 'Abbrechen'}
           </button>
           <button
             onClick={handleConfirm}
-            disabled={!sourceDeckelId || (sourceTotalBalance < 0 && !targetDeckelId)}
+            disabled={!sourceDeckelId || !targetDeckelId}
             className={`px-6 py-2 rounded font-semibold text-white transition ${
-              sourceDeckelId && (sourceTotalBalance >= 0 || targetDeckelId)
+              sourceDeckelId && targetDeckelId
                 ? 'bg-green-600 hover:bg-green-700'
                 : 'bg-green-600 cursor-not-allowed opacity-50'
             }`}

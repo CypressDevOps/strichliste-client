@@ -259,15 +259,24 @@ export const useDeckelUIState = ({
     closeConfirm();
   };
 
-  const handleTransactionConfirm = (amount: number) => {
-    if (!selectedDeckelId) return;
+  const handleTransactionConfirm = (amount: number, deckelId?: string) => {
+    const targetDeckelId = deckelId ?? selectedDeckelId;
+    if (!targetDeckelId) return;
     const tx: Transaction = {
       date: new Date(),
       description: 'Einzahlung',
       count: 1,
       sum: Number(amount),
     };
-    addTransaction(selectedDeckelId, tx);
+    addTransaction(targetDeckelId, tx);
+
+    // If a specific deckel was passed and it's different from current selection, select it
+    if (deckelId && deckelId !== selectedDeckelId) {
+      setSelectedDeckelId(deckelId);
+      selectDeckel(deckelId);
+    }
+
+    setModals((m) => ({ ...m, transaction: false }));
   };
 
   const closeConfirm = () => {
@@ -275,10 +284,11 @@ export const useDeckelUIState = ({
     setModals((m) => ({ ...m, confirm: false }));
   };
 
-  const handlePayConfirm = (amount: number) => {
-    if (!selectedDeckelId) return;
+  const handlePayConfirm = (amount: number, deckelId?: string) => {
+    const targetDeckelId = deckelId ?? selectedDeckelId;
+    if (!targetDeckelId) return;
 
-    const deckel = deckelList.find((d) => d.id === selectedDeckelId);
+    const deckel = deckelList.find((d) => d.id === targetDeckelId);
     if (!deckel) return;
 
     const oldSum = deckel.transactions?.reduce((acc, t) => acc + (t.sum ?? 0), 0) ?? 0;
@@ -291,10 +301,16 @@ export const useDeckelUIState = ({
       sum: amount,
     };
 
-    addTransaction(selectedDeckelId, tx);
+    addTransaction(targetDeckelId, tx);
 
     if (newSum === 0) {
-      markDeckelAsPaid(selectedDeckelId, true);
+      markDeckelAsPaid(targetDeckelId, true);
+    }
+
+    // If a specific deckel was passed and it's different from current selection, select it
+    if (deckelId && deckelId !== selectedDeckelId) {
+      setSelectedDeckelId(deckelId);
+      selectDeckel(deckelId);
     }
 
     setModals((m) => ({ ...m, pay: false }));

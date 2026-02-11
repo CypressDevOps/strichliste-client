@@ -1,13 +1,16 @@
 // src/app/TransactionModal.tsx
 import React, { useEffect, useRef, useState } from 'react';
+import { DeckelUIState } from '../domain/models';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   onGoBack?: () => void;
-  onConfirm: (amount: number) => void;
+  onConfirm: (amount: number, deckelId?: string) => void;
   presets?: number[]; // z. B. [5,10,20,50]
   currency?: string; // z. B. '€'
+  deckelList?: DeckelUIState[];
+  selectedDeckelId: string | null;
 }
 
 export const TransactionModal: React.FC<Props> = ({
@@ -17,10 +20,15 @@ export const TransactionModal: React.FC<Props> = ({
   onConfirm,
   presets = [5, 10, 20, 50],
   currency = '€',
+  deckelList,
+  selectedDeckelId,
 }) => {
   // amount als string speichern, Parsing erfolgt beim Bestätigen
   const [amount, setAmount] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [internalSelectedDeckelId, setInternalSelectedDeckelId] = useState<string | null>(
+    selectedDeckelId
+  );
   const inputRef = useRef<HTMLInputElement | null>(null);
   const timerRef = useRef<number | null>(null);
 
@@ -68,7 +76,7 @@ export const TransactionModal: React.FC<Props> = ({
       setError('Bitte einen gültigen Betrag größer 0 eingeben.');
       return;
     }
-    onConfirm(Number(parsed));
+    onConfirm(Number(parsed), internalSelectedDeckelId ?? undefined);
     onClose();
   };
 
@@ -79,10 +87,63 @@ export const TransactionModal: React.FC<Props> = ({
 
   if (!isOpen) return null;
 
+  // Determine if we need to show selection mode
+  const needsSelection = !internalSelectedDeckelId && deckelList && deckelList.length > 0;
+  const availableDeckel =
+    deckelList?.filter((d) => d.status === 'OFFEN' || d.status === 'GONE') ?? [];
+
+  // Selection Mode
+  if (needsSelection) {
+    return (
+      <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50'>
+        <div className='bg-white rounded-lg w-11/12 max-w-md p-6 shadow-lg'>
+          <h2 className='text-lg font-semibold text-blue-950 mb-4'>Deckel auswählen</h2>
+
+          <p className='text-sm text-gray-700 mb-4'>Wähle einen Gast für die Einzahlung aus:</p>
+
+          {availableDeckel.length === 0 ? (
+            <p className='text-sm text-gray-600 italic mb-6'>Keine Gäste verfügbar</p>
+          ) : (
+            <div className='max-h-96 overflow-y-auto mb-6'>
+              <div className='flex flex-col gap-2'>
+                {availableDeckel.map((deckel) => {
+                  const sum = deckel.transactions?.reduce((acc, t) => acc + (t.sum ?? 0), 0) ?? 0;
+                  return (
+                    <button
+                      key={deckel.id}
+                      onClick={() => setInternalSelectedDeckelId(deckel.id)}
+                      className='w-full px-4 py-3 bg-blue-600 text-white rounded hover:bg-blue-700 font-semibold text-left flex justify-between items-center'
+                    >
+                      <span>{deckel.name}</span>
+                      <span className={sum < 0 ? 'text-red-200' : 'text-green-200'}>
+                        {sum.toFixed(2)} €
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={() => (onGoBack ? onGoBack() : onClose())}
+            className='w-full px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 font-semibold'
+          >
+            {onGoBack ? '< Zurück' : 'Abbrechen'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const currentDeckel = deckelList?.find((d) => d.id === internalSelectedDeckelId);
+
   return (
     <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50'>
       <div className='bg-white rounded-lg p-6 w-96 shadow-lg'>
-        <h2 className='text-xl text-blue-950 font-semibold mb-4'>Einzahlung</h2>
+        <h2 className='text-xl text-blue-950 font-semibold mb-4'>
+          Einzahlung{currentDeckel ? ` - ${currentDeckel.name}` : ''}
+        </h2>
 
         <div className='mb-3'>
           <div className='flex gap-2 flex-wrap'>
@@ -109,8 +170,21 @@ export const TransactionModal: React.FC<Props> = ({
             type='text'
             value={amount}
             onChange={(e) => {
-              const v = e.target.value;
-              // immer als string speichern; Parsing erfolgt beim Bestätigen
+              let v = e.target.value;
+              // Entferne alle Zeichen außer Ziffern und Komma
+              v = v.replace(/[^\d,]/g, '');
+
+              // Erlaube nur ein Komma
+              const parts = v.split(',');
+              if (parts.length > 2) {
+                v = parts[0] + ',' + parts.slice(1).join('');
+              }
+
+              // Begrenze Nachkommastellen auf 2
+              if (parts.length === 2 && parts[1].length > 2) {
+                v = parts[0] + ',' + parts[1].substring(0, 2);
+              }
+
               setAmount(v);
               setError('');
             }}
@@ -125,10 +199,22 @@ export const TransactionModal: React.FC<Props> = ({
 
         <div className='flex justify-end gap-2 mt-4'>
           <button
-            onClick={() => (onGoBack ? onGoBack() : onClose())}
+            onClick={() => {
+              if (!selectedDeckelId && deckelList && deckelList.length > 0) {
+                setInternalSelectedDeckelId(null);
+              } else if (onGoBack) {
+                onGoBack();
+              } else {
+                onClose();
+              }
+            }}
             className='px-4 py-2 bg-gray-700 rounded hover:bg-gray-800'
           >
-            {onGoBack ? '< Zurück' : 'Abbrechen'}
+            {!selectedDeckelId && deckelList && deckelList.length > 0
+              ? '< Zur Auswahl'
+              : onGoBack
+                ? 'Zurück'
+                : 'Abbrechen'}
           </button>
           <button
             onClick={handleConfirm}

@@ -28,13 +28,16 @@ export const useDeckelComputed = (
   const hasTransactions = transactions.length > 0;
 
   const darfKorrigieren =
-    !isAbendGeschlossen && !!selectedDeckel && (selectedDeckel.transactions?.length ?? 0) > 0;
+    !isAbendGeschlossen &&
+    !!selectedDeckel &&
+    !isReadOnly &&
+    (selectedDeckel.transactions?.length ?? 0) > 0;
 
   const darfDeckelGezahltWerden =
     !isAbendGeschlossen &&
     selectedDeckel?.status === DECKEL_STATUS.OFFEN &&
     hasTransactions &&
-    totalSum <= 0;
+    totalSum < 0;
 
   return {
     selectedDeckel,

@@ -47,6 +47,22 @@ const migrateLoadedList = (list: DeckelUIState[]): DeckelUIState[] => {
 // STORAGE KEYS
 // -----------------------------
 const STORAGE_KEY = 'deckel_state_v1';
+const SESSION_MARKER_KEY = 'app_session_active';
+
+// -----------------------------
+// HELFER: Prüfen ob Browser neu gestartet wurde
+// -----------------------------
+const isNewBrowserSession = (): boolean => {
+  if (typeof window === 'undefined') return false;
+
+  const hasSession = sessionStorage.getItem(SESSION_MARKER_KEY);
+  if (!hasSession) {
+    // Keine Session gefunden = Browser wurde neu gestartet
+    sessionStorage.setItem(SESSION_MARKER_KEY, 'true');
+    return true;
+  }
+  return false;
+};
 
 // -----------------------------
 // HELFER: 05:00-Regel (NÄCHSTER TAG 05:00)
@@ -96,6 +112,25 @@ const loadInitialState = (): {
         list = list.filter((d) => d.status !== DECKEL_STATUS.BEZAHLT);
         closed = false;
         closedAt = null;
+      }
+    }
+
+    // Bei neuem Browser-Start (aber nicht bei Refresh): Bezahlte Deckel entfernen
+    const isNewSession = isNewBrowserSession();
+    if (isNewSession) {
+      const lengthBefore = list.length;
+      list = list.filter((d) => d.status !== DECKEL_STATUS.BEZAHLT);
+
+      // Falls Deckel entfernt wurden, sofort speichern
+      if (list.length !== lengthBefore && typeof window !== 'undefined') {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({
+            deckelList: list,
+            isAbendGeschlossen: closed,
+            abendClosedAt: closedAt?.toISOString() ?? null,
+          })
+        );
       }
     }
 

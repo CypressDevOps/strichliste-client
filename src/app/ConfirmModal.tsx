@@ -28,7 +28,7 @@ export const ConfirmModal: React.FC<Props> = ({
   onConfirm,
   onCancel,
   secondaryAction,
-  showSavedInfo = true,
+  showSavedInfo = false,
   confirmClassName,
 }) => {
   const confirmRef = useRef<HTMLButtonElement | null>(null);
@@ -51,7 +51,7 @@ export const ConfirmModal: React.FC<Props> = ({
         window.removeEventListener('keydown', onKey);
       };
     }
-  }, [isOpen, onCancel]);
+  }, [isOpen, onCancel, onConfirm]);
 
   if (!isOpen) return null;
 
