@@ -32,11 +32,19 @@ export interface DeckelUIState {
   rootKey?: string;
 }
 
+export type ProductCategory =
+  | 'Bier'
+  | 'Alkoholfreie Getränke'
+  | 'Schnaps'
+  | 'Sekt / Schaumwein'
+  | 'Snacks';
+
 export interface Product {
   id: string;
   name: string;
   price: number;
   icon: string;
+  category: ProductCategory;
   sortOrder: number;
   isActive: boolean;
 }

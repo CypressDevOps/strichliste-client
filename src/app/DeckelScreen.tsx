@@ -3,11 +3,12 @@ import React, { useState, useEffect } from 'react';
 
 import { useDeckelState } from '../domain/deckelService';
 import { productService } from '../domain/productService';
-import { Product } from '../domain/models';
+import { Product, ProductCategory } from '../domain/models';
 
 import { GuestList } from './components/GuestList';
 import { DeckelTable } from './components/DeckelTable';
-import { ProductButtons } from './components/ProductButtons';
+import { CategorySelector } from './components/CategorySelector';
+import { ProductGrid } from './components/ProductGrid';
 import { DeckelFooter } from './components/DeckelFooter';
 
 import { DeckelFormModal } from './DeckelFormModal';
@@ -41,6 +42,7 @@ export const DeckelScreen: React.FC = () => {
   const [transferModalOpen, setTransferModalOpen] = useState(false);
   const [isAddingProductTransaction, setIsAddingProductTransaction] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<ProductCategory | null>(null);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
 
   useEffect(() => {
@@ -100,6 +102,11 @@ export const DeckelScreen: React.FC = () => {
     updateDeckelStatus,
     mergeDeckelInto, // wird intern für automatisches Merge verwendet
   });
+
+  // Reset category when changing guests
+  useEffect(() => {
+    setSelectedCategory(null);
+  }, [selectedDeckelId]);
 
   const {
     isSelectedPresent,
@@ -167,19 +174,14 @@ export const DeckelScreen: React.FC = () => {
                 setSelectedTxId={setSelectedTxId}
               />
 
-              <img
-                src='/images/strichliste-icons/alc-icon.png'
-                alt='Getränke'
-                title='Bier, Cola, Schnaps'
-                className='mt-4 w-15 h-15 mx-auto opacity-60'
-              />
-
-              {products.map((product) => (
-                <ProductButtons
-                  key={product.id}
-                  label={product.name}
-                  icon={product.icon}
-                  onAdd={(count) => {
+              {!selectedCategory ? (
+                <CategorySelector onSelectCategory={(category) => setSelectedCategory(category)} />
+              ) : (
+                <ProductGrid
+                  products={products.filter((p) => p.category === selectedCategory)}
+                  category={selectedCategory}
+                  onBack={() => setSelectedCategory(null)}
+                  onAddProduct={(product, count) => {
                     if (!isReadOnly && !isAddingProductTransaction) {
                       setIsAddingProductTransaction(true);
                       try {
@@ -195,7 +197,7 @@ export const DeckelScreen: React.FC = () => {
                     }
                   }}
                 />
-              ))}
+              )}
             </>
           ) : deckelList.length > 0 ? (
             <p className='text-gray-300 text-xl font-semibold mt-6'>

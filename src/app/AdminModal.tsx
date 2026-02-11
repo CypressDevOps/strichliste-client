@@ -1,6 +1,6 @@
 // src/app/AdminModal.tsx
 import React, { useState, useEffect } from 'react';
-import { Product } from '../domain/models';
+import { Product, ProductCategory } from '../domain/models';
 import { productService } from '../domain/productService';
 
 interface AdminModalProps {
@@ -11,9 +11,27 @@ interface AdminModalProps {
 export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', price: 0, icon: '' });
+  const [editForm, setEditForm] = useState({
+    name: '',
+    price: 0,
+    icon: '',
+    category: 'Bier' as ProductCategory,
+  });
   const [isAddingNew, setIsAddingNew] = useState(false);
-  const [newForm, setNewForm] = useState({ name: '', price: 0, icon: '' });
+  const [newForm, setNewForm] = useState({
+    name: '',
+    price: 0,
+    icon: '',
+    category: 'Bier' as ProductCategory,
+  });
+
+  const CATEGORIES: ProductCategory[] = [
+    'Bier',
+    'Alkoholfreie Getränke',
+    'Schnaps',
+    'Sekt / Schaumwein',
+    'Snacks',
+  ];
 
   useEffect(() => {
     if (!isOpen) return;
@@ -30,7 +48,12 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
 
   const handleEdit = (product: Product) => {
     setEditingId(product.id);
-    setEditForm({ name: product.name, price: product.price, icon: product.icon });
+    setEditForm({
+      name: product.name,
+      price: product.price,
+      icon: product.icon,
+      category: product.category,
+    });
   };
 
   const handleSaveEdit = () => {
@@ -75,9 +98,10 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
       name: newForm.name,
       price: newForm.price,
       icon: newForm.icon,
+      category: newForm.category,
       isActive: true,
     });
-    setNewForm({ name: '', price: 0, icon: '' });
+    setNewForm({ name: '', price: 0, icon: '', category: 'Bier' });
     setIsAddingNew(false);
     loadProducts();
   };
@@ -126,6 +150,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                 <tr>
                   <th className='px-4 py-3'>Name</th>
                   <th className='px-4 py-3'>Preis (€)</th>
+                  <th className='px-4 py-3'>Kategorie</th>
                   <th className='px-4 py-3'>Icon</th>
                   <th className='px-4 py-3'>Status</th>
                   <th className='px-4 py-3'>Aktionen</th>
@@ -154,6 +179,24 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                             }
                             className='bg-gray-900 text-white px-2 py-1 rounded w-24'
                           />
+                        </td>
+                        <td className='px-4 py-3'>
+                          <select
+                            value={editForm.category}
+                            onChange={(e) =>
+                              setEditForm({
+                                ...editForm,
+                                category: e.target.value as ProductCategory,
+                              })
+                            }
+                            className='bg-gray-900 text-white px-2 py-1 rounded w-full text-sm'
+                          >
+                            {CATEGORIES.map((cat) => (
+                              <option key={cat} value={cat}>
+                                {cat}
+                              </option>
+                            ))}
+                          </select>
                         </td>
                         <td className='px-4 py-3'>
                           <div className='flex items-center gap-2'>
@@ -199,6 +242,9 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                       <>
                         <td className='px-4 py-3 font-medium'>{product.name}</td>
                         <td className='px-4 py-3'>{product.price.toFixed(2)}</td>
+                        <td className='px-4 py-3'>
+                          <span className='text-sm text-gray-300'>{product.category}</span>
+                        </td>
                         <td className='px-4 py-3'>
                           {product.icon ? (
                             <img src={product.icon} alt={product.name} className='w-8 h-8' />
@@ -255,7 +301,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
             ) : (
               <div className='bg-gray-700 p-4 rounded'>
                 <h3 className='text-lg font-bold text-white mb-3'>Neues Produkt</h3>
-                <div className='grid grid-cols-1 md:grid-cols-3 gap-4 mb-4'>
+                <div className='grid grid-cols-1 md:grid-cols-4 gap-4 mb-4'>
                   <div>
                     <label className='block text-sm text-gray-300 mb-1'>Name</label>
                     <input
@@ -278,6 +324,22 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                       className='bg-gray-900 text-white px-3 py-2 rounded w-full'
                       placeholder='0.00'
                     />
+                  </div>
+                  <div>
+                    <label className='block text-sm text-gray-300 mb-1'>Kategorie</label>
+                    <select
+                      value={newForm.category}
+                      onChange={(e) =>
+                        setNewForm({ ...newForm, category: e.target.value as ProductCategory })
+                      }
+                      className='bg-gray-900 text-white px-3 py-2 rounded w-full'
+                    >
+                      {CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className='block text-sm text-gray-300 mb-1'>Icon (optional)</label>
@@ -314,7 +376,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                   <button
                     onClick={() => {
                       setIsAddingNew(false);
-                      setNewForm({ name: '', price: 0, icon: '' });
+                      setNewForm({ name: '', price: 0, icon: '', category: 'Bier' });
                     }}
                     className='bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded'
                   >

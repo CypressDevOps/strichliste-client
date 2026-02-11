@@ -28,7 +28,6 @@ export const ConfirmModal: React.FC<Props> = ({
   onConfirm,
   onCancel,
   secondaryAction,
-  showSavedInfo = false,
   confirmClassName,
 }) => {
   const confirmRef = useRef<HTMLButtonElement | null>(null);
@@ -71,9 +70,6 @@ export const ConfirmModal: React.FC<Props> = ({
         <p id='confirm-modal-desc' className='text-sm text-gray-700'>
           {message}
         </p>
-
-        {/* Optionaler Hinweis, kann per Prop deaktiviert werden */}
-        {showSavedInfo}
 
         <div className='mt-6 flex justify-end gap-3'>
           <button
