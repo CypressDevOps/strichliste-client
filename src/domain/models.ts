@@ -44,6 +44,7 @@ export interface Product {
   name: string;
   price: number;
   icon: string;
+  emoji?: string;
   category: ProductCategory;
   sortOrder: number;
   isActive: boolean;

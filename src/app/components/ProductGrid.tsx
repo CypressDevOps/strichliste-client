@@ -35,13 +35,15 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
             className='bg-gray-800 rounded-lg p-4 shadow-md hover:shadow-lg transition'
           >
             <div className='flex items-center gap-4 mb-3'>
-              {product.icon && (
+              {product.emoji ? (
+                <span className='text-5xl'>{product.emoji}</span>
+              ) : product.icon ? (
                 <img
                   src={product.icon}
                   alt={product.name}
                   className='w-16 h-16 object-contain opacity-90'
                 />
-              )}
+              ) : null}
               <div className='flex-1'>
                 <h4 className='text-lg font-semibold text-white'>{product.name}</h4>
                 <p className='text-green-400 font-bold text-xl'>{product.price.toFixed(2)} €</p>
