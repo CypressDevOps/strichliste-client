@@ -20,6 +20,7 @@ export const DeckeltransferModal: React.FC<Props> = ({
   const [sourceDeckelId, setSourceDeckelId] = useState<string | null>(null);
   const [targetDeckelId, setTargetDeckelId] = useState<string | null>(null);
   const [warnModal, setWarnModal] = useState<'balance' | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   if (!isOpen) return null;
 
@@ -108,7 +109,7 @@ export const DeckeltransferModal: React.FC<Props> = ({
   const targetDeckel = availableTargets.find((d) => d.id === targetDeckelId);
 
   const handleConfirm = () => {
-    if (!sourceDeckelId || !targetDeckelId) return;
+    if (!sourceDeckelId || !targetDeckelId || isProcessing) return;
 
     // Prüfe ob Gesamtergebnis >= 0
     if (sourceTotalBalance >= 0) {
@@ -116,13 +117,20 @@ export const DeckeltransferModal: React.FC<Props> = ({
       return;
     }
 
-    // Wenn positive Transaktionen vorhanden sind, nur negative übertragen (kein Guthaben)
-    const onlyNegative = hasPositiveTransactions;
+    setIsProcessing(true);
 
-    onConfirm(sourceDeckelId, targetDeckelId, onlyNegative);
-    setSourceDeckelId(null);
-    setTargetDeckelId(null);
-    onClose();
+    try {
+      // Wenn positive Transaktionen vorhanden sind, nur negative übertragen (kein Guthaben)
+      const onlyNegative = hasPositiveTransactions;
+
+      onConfirm(sourceDeckelId, targetDeckelId, onlyNegative);
+      setSourceDeckelId(null);
+      setTargetDeckelId(null);
+      onClose();
+    } finally {
+      // Reset processing state even if onConfirm throws
+      setTimeout(() => setIsProcessing(false), 500);
+    }
   };
 
   // Warn Modal für Gesamtergebnis >= 0
@@ -275,14 +283,14 @@ export const DeckeltransferModal: React.FC<Props> = ({
           </button>
           <button
             onClick={handleConfirm}
-            disabled={!sourceDeckelId || !targetDeckelId}
+            disabled={!sourceDeckelId || !targetDeckelId || isProcessing}
             className={`px-6 py-2 rounded font-semibold text-white transition ${
-              sourceDeckelId && targetDeckelId
+              sourceDeckelId && targetDeckelId && !isProcessing
                 ? 'bg-green-600 hover:bg-green-700'
                 : 'bg-green-600 cursor-not-allowed opacity-50'
             }`}
           >
-            Übertragen
+            {isProcessing ? 'Übertrage...' : 'Übertragen'}
           </button>
         </div>
       </div>

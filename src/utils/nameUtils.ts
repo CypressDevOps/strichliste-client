@@ -153,7 +153,8 @@ export const toDeckelForm = (input: string): string => {
 /**
  * Erzeugt den nächsten Anzeige‑Namen:
  * - normalisiert Eingabe zuerst in Deckel-Form (toDeckelForm)
- * - zählt alle Einträge, deren Root mit dem neuen Root übereinstimmt
+ * - berücksichtigt ALLE jemals verwendeten Nummern (auch BEZAHLT/GONE/GESCHLOSSEN)
+ * - findet die nächste verfügbare Nummer (Nummern werden NICHT wiederverwendet)
  * - wenn eingegebener Name auf "Deckel" endet, fügt Nummer nach "Deckel" ein
  * - wenn bereits Deckel-Formen existieren, bevorzugt "Root Deckel N"
  */
@@ -168,16 +169,46 @@ export const nextDisplayName = (baseName: string, list: DeckelUIState[]): string
   const possBase = baseWithoutDeckel;
   const root = getRootName(possBase); // root ohne "deckel" und ohne Zahl
 
-  // Zähle vorhandene Einträge mit derselben Root
-  const count = list
-    .map((d) => getRootName(d.name))
-    .filter((existingRoot) => existingRoot === root).length;
+  // Finde ALLE Deckel mit derselben Root (egal welcher Status)
+  // um zu vermeiden dass Nummern wiederverwendet werden
+  const allWithSameRoot = list.filter((d) => getRootName(d.name) === root);
 
   // Wenn noch kein Eintrag existiert, gib "PossBase Deckel" zurück
-  if (count === 0) {
+  if (allWithSameRoot.length === 0) {
+    return `${possBase} Deckel`;
+  }
+
+  // Extrahiere vorhandene Nummern (aus ALLEN Deckeln, nicht nur offenen)
+  const existingNumbers = new Set<number>();
+  let hasDeckelWithoutNumber = false;
+
+  for (const d of allWithSameRoot) {
+    const match = d.name.match(/\s+(\d+)$/);
+    if (match) {
+      existingNumbers.add(parseInt(match[1], 10));
+    } else {
+      // "Jannis Deckel" ohne Nummer existiert bereits
+      hasDeckelWithoutNumber = true;
+    }
+  }
+
+  // Finde die nächste verfügbare Nummer
+  let nextNumber = 1;
+
+  // Wenn es bereits einen "Deckel" ohne Nummer gibt, starte bei 2
+  if (hasDeckelWithoutNumber) {
+    nextNumber = 2;
+  }
+
+  while (existingNumbers.has(nextNumber)) {
+    nextNumber++;
+  }
+
+  // Wenn nextNumber = 1 (und kein Deckel ohne Nummer existiert), gib "PossBase Deckel" zurück
+  if (nextNumber === 1) {
     return `${possBase} Deckel`;
   }
 
   // Sonst: gib "PossBase Deckel N" zurück
-  return `${possBase} Deckel ${count + 1}`;
+  return `${possBase} Deckel ${nextNumber}`;
 };

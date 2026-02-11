@@ -76,6 +76,11 @@ export const TransactionModal: React.FC<Props> = ({
       setError('Bitte einen gültigen Betrag größer 0 eingeben.');
       return;
     }
+    // Safe integer check
+    if (parsed * 100 > Number.MAX_SAFE_INTEGER) {
+      setError('Betrag ist zu groß.');
+      return;
+    }
     onConfirm(Number(parsed), internalSelectedDeckelId ?? undefined);
     onClose();
   };
@@ -169,10 +174,16 @@ export const TransactionModal: React.FC<Props> = ({
             ref={inputRef}
             type='text'
             value={amount}
+            maxLength={13}
             onChange={(e) => {
               let v = e.target.value;
               // Entferne alle Zeichen außer Ziffern und Komma
               v = v.replace(/[^\d,]/g, '');
+
+              // Limit length to prevent overflow
+              if (v.length > 13) {
+                v = v.substring(0, 13);
+              }
 
               // Erlaube nur ein Komma
               const parts = v.split(',');

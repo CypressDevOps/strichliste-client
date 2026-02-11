@@ -159,6 +159,11 @@ export const PayDeckelModal: React.FC<PayDeckelModalProps> = ({
     // Entferne alle Zeichen außer Ziffern und Komma
     let cleaned = value.replace(/[^\d,]/g, '');
 
+    // Limit total length to prevent overflow (max 10 digits + comma + 2 decimals = 13)
+    if (cleaned.length > 13) {
+      cleaned = cleaned.substring(0, 13);
+    }
+
     // Erlaube nur ein Komma
     const parts = cleaned.split(',');
     if (parts.length > 2) {
@@ -177,7 +182,19 @@ export const PayDeckelModal: React.FC<PayDeckelModalProps> = ({
   const handleCustomConfirm = () => {
     // Konvertiere Komma zu Punkt für Number()
     const amount = Number(custom.replace(',', '.'));
-    if (!amount || amount <= 0 || amount > 200) return;
+    if (!amount || amount <= 0) {
+      alert('Bitte einen gültigen Betrag größer 0 eingeben.');
+      return;
+    }
+    if (amount > 200) {
+      alert('Maximaler Betrag ist 200€.');
+      return;
+    }
+    // Safe integer check (JavaScript limit)
+    if (amount * 100 > Number.MAX_SAFE_INTEGER) {
+      alert('Betrag ist zu groß.');
+      return;
+    }
     onConfirm(amount, internalSelectedDeckelId ?? undefined);
   };
 

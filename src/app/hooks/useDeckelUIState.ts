@@ -139,10 +139,14 @@ export const useDeckelUIState = ({
     const current = deckelList.find((d) => d.id === selectedDeckelId);
     if (!current) return;
 
-    // Determine root of current deckel and only propose targets with the same root
+    // Determine root of current deckel and only propose targets with the same root (exclude paid/gone)
     const baseRoot = current.rootKey ?? getRootName(current.name);
     const sameRootCandidates = deckelList.filter(
-      (d) => d.id !== selectedDeckelId && (d.rootKey ?? getRootName(d.name)) === baseRoot
+      (d) =>
+        d.id !== selectedDeckelId &&
+        (d.rootKey ?? getRootName(d.name)) === baseRoot &&
+        d.status !== DECKEL_STATUS.BEZAHLT &&
+        d.status !== DECKEL_STATUS.GONE
     );
 
     if (sameRootCandidates.length === 0) {

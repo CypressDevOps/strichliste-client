@@ -36,6 +36,7 @@ export const DeckelScreen: React.FC = () => {
   const [isAddingDeckel, setIsAddingDeckel] = useState(false);
   const [cassierModalOpen, setCassierModalOpen] = useState(false);
   const [transferModalOpen, setTransferModalOpen] = useState(false);
+  const [isAddingProductTransaction, setIsAddingProductTransaction] = useState(false);
 
   const {
     deckelList,
@@ -161,13 +162,18 @@ export const DeckelScreen: React.FC = () => {
                 label='Stubbi'
                 icon='/images/strichliste-icons/icon-stubbi.png'
                 onAdd={(count) => {
-                  if (!isReadOnly) {
-                    addTransaction(selectedDeckel.id, {
-                      date: new Date(),
-                      description: 'Stubbi',
-                      count,
-                      sum: -(count * 1.5),
-                    });
+                  if (!isReadOnly && !isAddingProductTransaction) {
+                    setIsAddingProductTransaction(true);
+                    try {
+                      addTransaction(selectedDeckel.id, {
+                        date: new Date(),
+                        description: 'Stubbi',
+                        count,
+                        sum: -(count * 1.5),
+                      });
+                    } finally {
+                      setTimeout(() => setIsAddingProductTransaction(false), 300);
+                    }
                   }
                 }}
               />
@@ -176,13 +182,18 @@ export const DeckelScreen: React.FC = () => {
                 label='Helles'
                 icon='/images/strichliste-icons/icon-helles.png'
                 onAdd={(count) => {
-                  if (!isReadOnly) {
-                    addTransaction(selectedDeckel.id, {
-                      date: new Date(),
-                      description: 'Helles',
-                      count,
-                      sum: -(count * 2.0),
-                    });
+                  if (!isReadOnly && !isAddingProductTransaction) {
+                    setIsAddingProductTransaction(true);
+                    try {
+                      addTransaction(selectedDeckel.id, {
+                        date: new Date(),
+                        description: 'Helles',
+                        count,
+                        sum: -(count * 2.0),
+                      });
+                    } finally {
+                      setTimeout(() => setIsAddingProductTransaction(false), 300);
+                    }
                   }
                 }}
               />
@@ -279,7 +290,7 @@ export const DeckelScreen: React.FC = () => {
                 console.log('match saldo:', saldo);
 
                 if (saldo === 0) {
-                  // Berechne finale Anzeigeform für Confirm
+                  // Berechne finale Anzeigeform für Confirm (alle Deckel berücksichtigen)
                   const displayForPending = nextDisplayName(baseForMatch, deckelList);
 
                   console.log('match found (saldo 0). match.name:', match.name);

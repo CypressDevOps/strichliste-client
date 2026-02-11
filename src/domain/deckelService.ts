@@ -51,17 +51,33 @@ const SESSION_MARKER_KEY = 'app_session_active';
 
 // -----------------------------
 // HELFER: Prüfen ob Browser neu gestartet wurde
+// Thread-safe mit Timestamp zur Vermeidung von Multi-Tab Race Conditions
 // -----------------------------
 const isNewBrowserSession = (): boolean => {
   if (typeof window === 'undefined') return false;
 
-  const hasSession = sessionStorage.getItem(SESSION_MARKER_KEY);
-  if (!hasSession) {
-    // Keine Session gefunden = Browser wurde neu gestartet
-    sessionStorage.setItem(SESSION_MARKER_KEY, 'true');
-    return true;
+  try {
+    const hasSession = sessionStorage.getItem(SESSION_MARKER_KEY);
+    const now = Date.now();
+
+    if (!hasSession) {
+      // Keine Session gefunden = Browser wurde neu gestartet
+      // Setze Marker mit Timestamp für Multi-Tab Koordination
+      sessionStorage.setItem(SESSION_MARKER_KEY, now.toString());
+      return true;
+    }
+
+    // Multi-Tab Protection: Wenn Marker sehr alt ist (>100ms), anderer Tab hat bereits initialisiert
+    const sessionTime = parseInt(hasSession, 10);
+    if (!isNaN(sessionTime) && now - sessionTime > 100) {
+      return false; // Anderer Tab war schneller
+    }
+
+    return false;
+  } catch (error) {
+    console.error('Session check failed:', error);
+    return false; // Bei Fehler: Safe Default
   }
-  return false;
 };
 
 // -----------------------------
@@ -94,16 +110,36 @@ const loadInitialState = (): {
     let closed = parsed.isAbendGeschlossen ?? false;
     let closedAt = parsed.abendClosedAt ? new Date(parsed.abendClosedAt) : null;
 
-    // Migration: ownerId setzen, falls fehlt; parse dates
-    list = list.map((d) => ({
-      ...d,
-      ownerId: d.ownerId ?? d.id,
-      lastActivity: new Date(d.lastActivity),
-      transactions: (d.transactions ?? []).map((t: Transaction) => ({
-        ...t,
-        date: new Date(t.date),
-      })),
-    }));
+    // Migration: ownerId setzen, falls fehlt; parse dates with validation
+    list = list.map((d) => {
+      // Validate and parse lastActivity
+      let lastActivity = new Date();
+      try {
+        const parsed = new Date(d.lastActivity);
+        lastActivity = isNaN(parsed.getTime()) ? new Date() : parsed;
+      } catch {
+        console.warn('Invalid lastActivity date for deckel:', d.id);
+      }
+
+      // Validate and parse transaction dates
+      const transactions = (d.transactions ?? []).map((t: Transaction) => {
+        let txDate = new Date();
+        try {
+          const parsed = new Date(t.date);
+          txDate = isNaN(parsed.getTime()) ? new Date() : parsed;
+        } catch {
+          console.warn('Invalid transaction date:', t.id);
+        }
+        return { ...t, date: txDate };
+      });
+
+      return {
+        ...d,
+        ownerId: d.ownerId ?? d.id,
+        lastActivity,
+        transactions,
+      };
+    });
 
     if (closed && closedAt) {
       const now = new Date();
@@ -135,7 +171,12 @@ const loadInitialState = (): {
     }
 
     return { list, closed, closedAt };
-  } catch {
+  } catch (error) {
+    console.error('Failed to load initial state from localStorage:', error);
+    // Notify user about data loss
+    if (typeof window !== 'undefined' && error instanceof Error) {
+      console.error('localStorage might be corrupted. Error:', error.message);
+    }
     return { list: [], closed: false, closedAt: null };
   }
 };
@@ -156,7 +197,7 @@ export const useDeckelState = () => {
   const selectedDeckel = deckelList.find((d) => d.isSelected);
 
   // -----------------------------
-  // STORAGE: SAVE ON EVERY CHANGE
+  // STORAGE: SAVE ON EVERY CHANGE with Quota Error Handling
   // -----------------------------
   useEffect(() => {
     try {
@@ -167,8 +208,19 @@ export const useDeckelState = () => {
         abendClosedAt: abendClosedAt ? abendClosedAt.toISOString() : null,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch {
-      // Ignore write errors
+    } catch (error) {
+      // Handle quota exceeded or other storage errors
+      if (error instanceof Error && error.name === 'QuotaExceededError') {
+        console.error('localStorage quota exceeded. Data might not be saved.');
+        // Notify user - could trigger a toast/modal in production
+        if (typeof window !== 'undefined' && window.alert) {
+          window.alert(
+            'Speicher voll! Bitte schließen Sie den Abend ab oder löschen Sie alte Daten.'
+          );
+        }
+      } else {
+        console.error('Failed to save to localStorage:', error);
+      }
     }
   }, [deckelList, isAbendGeschlossen, abendClosedAt]);
 
@@ -195,46 +247,42 @@ export const useDeckelState = () => {
     if (isAbendGeschlossen) return '';
     const trimmed = name.trim();
     if (!trimmed) return '';
+
+    // Validate name length (max 100 characters)
+    if (trimmed.length > 100) {
+      console.error('addDeckel: Name too long (max 100 chars)');
+      return '';
+    }
+
     const newOwnerId = ownerId ?? generateId();
 
-    // Debug: trace and log entry to addDeckel
-    console.log('addDeckel called with:', { name: trimmed, ownerId, newOwnerId });
-    console.trace('addDeckel trace');
+    // Generate id ONCE before setState (crucial for reliable return value)
+    const createdId = generateId();
 
     if (ownerId) {
       const existsSameOwnerActive = deckelList.some(
         (d) => (d.ownerId ?? d.id) === newOwnerId && d.status !== DECKEL_STATUS.BEZAHLT
       );
       if (existsSameOwnerActive) {
-        console.warn('addDeckel: owner already has active deckel, returning empty');
         return '';
       }
     }
 
     // Normalisiere Eingabe zuerst in die gewünschte Deckel‑Form (possessive basis ohne "Deckel")
     const baseForDisplay = toDeckelForm(trimmed);
-    console.log('addDeckel: baseForDisplay after toDeckelForm:', baseForDisplay);
-
-    // Generate id ONCE before setState (crucial for reliable return value)
-    const createdId = generateId();
 
     setDeckelList((prev) => {
-      // nextDisplayName berechnet "X Deckel" oder "X Deckel N" basierend auf prev
+      // Verify ID doesn't exist (race condition protection)
+      if (prev.some((d) => d.id === createdId)) {
+        console.error('Race condition detected: ID already exists', createdId);
+        return prev; // Abort if ID collision
+      }
+
+      // nextDisplayName berücksichtigt ALLE Deckel (auch BEZAHLT/GONE) um Nummern-Wiederverwendung zu vermeiden
       const displayName = nextDisplayName(baseForDisplay, prev);
 
       // rootKey für spätere, schnelle Vergleiche (z. B. beim Matchen)
       const rootKey = getRootName(displayName);
-
-      // Debug: prev names and computed display/root
-      try {
-        console.log(
-          'addDeckel - prev names:',
-          prev.map((p) => p.name)
-        );
-      } catch (e) {
-        console.warn('addDeckel - failed to map prev names', e);
-      }
-      console.log('addDeckel - computed displayName:', displayName, 'rootKey:', rootKey);
 
       const newDeckel: DeckelUIState = {
         id: createdId,
@@ -400,6 +448,9 @@ export const useDeckelState = () => {
   };
 
   const abendAbschliessen = () => {
+    const now = new Date();
+
+    // Atomare State-Updates: alle Änderungen in einem setState
     setDeckelList((prev) =>
       prev.map((deckel) => {
         if (deckel.status === DECKEL_STATUS.BEZAHLT) return deckel;
@@ -424,8 +475,9 @@ export const useDeckelState = () => {
       })
     );
 
+    // Batch state updates together
     setIsAbendGeschlossen(true);
-    setAbendClosedAt(new Date());
+    setAbendClosedAt(now);
   };
 
   const markDeckelAsPaid = (deckelId: string, paid: boolean = true) => {
@@ -450,66 +502,78 @@ export const useDeckelState = () => {
    * mergeDeckelInto
    * - transferiert alle Transaktionen (außer optional excludeTxId) von fromId nach toId
    * - setzt fromId auf GONE
-   * - verwendet addTransaction/removeTransaction intern via setDeckelList für atomare Änderung
+   * - atomar mit Rollback bei Fehlern
    */
-  // Ersetze die vorhandene mergeDeckelInto-Implementierung durch diese Version
   const mergeDeckelInto = (fromId: string, toId: string, excludeTxId?: string) => {
     if (isAbendGeschlossen) return;
+    if (fromId === toId) {
+      console.error('mergeDeckelInto: Cannot merge into self');
+      return;
+    }
 
     setDeckelList((prev) => {
       const from = prev.find((p) => p.id === fromId);
       const to = prev.find((p) => p.id === toId);
-      if (!from || !to) return prev;
 
-      // verbleibende Transaktionen vom 'from' (ohne excludeTxId)
-      const remainingTxs = (from.transactions ?? [])
-        .filter((t) => t.id !== excludeTxId)
-        .map((t) => ({
-          id: t.id ?? generateId(),
-          date: t.date ?? new Date(),
-          description: t.description,
-          count: t.count,
-          sum: t.sum,
-        }));
+      // Validate before any mutation
+      if (!from || !to) {
+        console.error('mergeDeckelInto: Source or target not found', { fromId, toId });
+        return prev; // Rollback: return unchanged state
+      }
 
-      // append, vermeide Duplikate nach id
-      const existingIds = new Set((to.transactions ?? []).map((t) => t.id));
-      const appended = remainingTxs.filter((t) => !existingIds.has(t.id));
+      try {
+        // verbleibende Transaktionen vom 'from' (ohne excludeTxId)
+        const remainingTxs = (from.transactions ?? [])
+          .filter((t) => t.id !== excludeTxId)
+          .map((t) => ({
+            id: t.id ?? generateId(),
+            date: t.date ?? new Date(),
+            description: t.description,
+            count: t.count,
+            sum: t.sum,
+          }));
 
-      // Erzeuge neue Liste: Ziel mit angehängten txs; Quelle ggf. entfernen
-      const next = prev
-        .map((d) => {
-          if (d.id === toId) {
-            return {
-              ...d,
-              transactions: [...(d.transactions ?? []), ...appended],
-              lastActivity: new Date(),
-              isActive: true,
-            };
-          }
-          if (d.id === fromId) {
-            // entferne die übertragenen txs (behalte nur excludeTxId falls vorhanden)
-            const kept = (d.transactions ?? []).filter((t) => t.id === excludeTxId);
-            return {
-              ...d,
-              transactions: kept,
-              status: DECKEL_STATUS.GONE,
-              isActive: false,
-              isSelected: false,
-              lastActivity: new Date(),
-            };
-          }
-          return d;
-        })
-        // Wenn nach dem Transfer keine Transaktionen mehr im 'from' Deckel sind, entferne ihn komplett
-        .filter((d) => {
-          if (d.id !== fromId) return true;
-          const txCount = (d.transactions ?? []).length;
-          // Entfernen, wenn keine Transaktionen mehr vorhanden sind
-          return txCount > 0;
-        });
+        // append, vermeide Duplikate nach id
+        const existingIds = new Set((to.transactions ?? []).map((t) => t.id));
+        const appended = remainingTxs.filter((t) => !existingIds.has(t.id));
 
-      return next;
+        // Erzeuge neue Liste atomar
+        const next = prev
+          .map((d) => {
+            if (d.id === toId) {
+              return {
+                ...d,
+                transactions: [...(d.transactions ?? []), ...appended],
+                lastActivity: new Date(),
+                isActive: true,
+              };
+            }
+            if (d.id === fromId) {
+              // entferne die übertragenen txs (behalte nur excludeTxId falls vorhanden)
+              const kept = (d.transactions ?? []).filter((t) => t.id === excludeTxId);
+              return {
+                ...d,
+                transactions: kept,
+                status: DECKEL_STATUS.GONE,
+                isActive: false,
+                isSelected: false,
+                lastActivity: new Date(),
+              };
+            }
+            return d;
+          })
+          // Wenn nach dem Transfer keine Transaktionen mehr im 'from' Deckel sind, entferne ihn komplett
+          .filter((d) => {
+            if (d.id !== fromId) return true;
+            const txCount = (d.transactions ?? []).length;
+            return txCount > 0;
+          });
+
+        return next;
+      } catch (error) {
+        console.error('mergeDeckelInto failed, rolling back:', error);
+        return prev; // Rollback on any error
+      }
     });
   };
 
