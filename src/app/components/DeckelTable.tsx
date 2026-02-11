@@ -55,7 +55,18 @@ export const DeckelTable: React.FC<DeckelTableProps> = ({
                 >
                   <td className='py-2 px-2 text-sm text-gray-300'>{formatDate(t.date)}</td>
 
-                  <td className='py-2 px-2 text-sm text-gray-300'>{t.description}</td>
+                  <td className='py-2 px-2 text-sm text-gray-300'>
+                    <div className='flex items-center gap-2'>
+                      <span>{t.description}</span>
+                      {t.count > 0 && t.count <= 5 && (
+                        <img
+                          src={`/images/strichliste-icons/strich-${t.count}.png`}
+                          alt={`${t.count}x`}
+                          className='h-6 inline-block opacity-80'
+                        />
+                      )}
+                    </div>
+                  </td>
 
                   <td className='py-2 px-2 text-sm text-gray-300 text-right'>{t.count}</td>
 
