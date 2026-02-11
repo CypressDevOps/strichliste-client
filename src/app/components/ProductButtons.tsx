@@ -14,9 +14,11 @@ export const ProductButtons: React.FC<ProductButtonsProps> = ({ label, icon, onA
 
       <div className='flex gap-3 items-center'>
         {/* Produkt-Icon */}
-        <div className='w-20 h-20 flex items-center justify-center'>
-          <img src={icon} alt={`${label} Produkt Icon`} className='w-20 h-20 opacity-90' />
-        </div>
+        {icon && (
+          <div className='w-20 h-20 flex items-center justify-center'>
+            <img src={icon} alt={`${label} Produkt Icon`} className='w-20 h-20 opacity-90' />
+          </div>
+        )}
 
         {/* 5 klickbare Icons */}
         {[1, 2, 3, 4, 5].map((count) => (

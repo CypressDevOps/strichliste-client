@@ -1,6 +1,6 @@
 // src/app/components/DeckelFooter.tsx
 import React from 'react';
-import { DeckelUIState } from '../../domain/models';
+import { DeckelUIState, DECKEL_STATUS } from '../../domain/models';
 import { canCloseEveningNow } from '../../utils/closeEvening';
 
 interface DeckelFooterProps {
@@ -76,9 +76,15 @@ export const DeckelFooter: React.FC<DeckelFooterProps> = ({
       <div className='flex items-center gap-2 flex-wrap justify-end max-w-full mr-10'>
         <button
           onClick={onOpenCashier}
-          disabled={!hasMultipleDeckel || isAbendGeschlossen}
+          disabled={
+            !hasMultipleDeckel ||
+            isAbendGeschlossen ||
+            selectedDeckel?.status === DECKEL_STATUS.BEZAHLT
+          }
           className={`px-4 py-2 text-base font-bold rounded shadow transition ${
-            !hasMultipleDeckel || isAbendGeschlossen
+            !hasMultipleDeckel ||
+            isAbendGeschlossen ||
+            selectedDeckel?.status === DECKEL_STATUS.BEZAHLT
               ? 'bg-blue-900/30 text-white/60 cursor-not-allowed'
               : 'bg-blue-600 text-white hover:bg-blue-800'
           }`}

@@ -1,7 +1,9 @@
 // src/app/DeckelScreen.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 import { useDeckelState } from '../domain/deckelService';
+import { productService } from '../domain/productService';
+import { Product } from '../domain/models';
 
 import { GuestList } from './components/GuestList';
 import { DeckelTable } from './components/DeckelTable';
@@ -22,6 +24,7 @@ import { useDeckelUIState } from './hooks/useDeckelUIState';
 import { useIsMobile } from './hooks/useIsMobile';
 import { PayDeckelModal } from './PayDeckelModal';
 import MergeCorrectionModal from './MergeCorrectionModal';
+import { AdminModal } from './AdminModal';
 import { DECKEL_STATUS } from '../domain/models';
 import {
   toDeckelForm,
@@ -37,6 +40,12 @@ export const DeckelScreen: React.FC = () => {
   const [cassierModalOpen, setCassierModalOpen] = useState(false);
   const [transferModalOpen, setTransferModalOpen] = useState(false);
   const [isAddingProductTransaction, setIsAddingProductTransaction] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+
+  useEffect(() => {
+    setProducts(productService.getActiveProducts());
+  }, []);
 
   const {
     deckelList,
@@ -121,10 +130,17 @@ export const DeckelScreen: React.FC = () => {
 
   return (
     <div className='flex flex-col h-[100dvh] text-gray-200 text-white'>
-      <header className='flex-shrink-0 px-4 pt-4 pb-2 border-b border-gray-300'>
+      <header className='flex-shrink-0 px-4 pt-4 pb-2 border-b border-gray-300 flex justify-between items-center'>
         <h1 className='text-green-600 text-2xl font-bold'>
           Deckelübersicht – {new Date().toLocaleDateString()}
         </h1>
+        <button
+          onClick={() => setIsAdminModalOpen(true)}
+          className='text-gray-400 hover:text-white text-3xl font-bold px-3 py-1 transition'
+          title='Admin Konsole'
+        >
+          ⋮
+        </button>
       </header>
 
       <div className='flex flex-1 flex-col lg:flex-row gap-0 overflow-hidden'>
@@ -158,45 +174,28 @@ export const DeckelScreen: React.FC = () => {
                 className='mt-4 w-15 h-15 mx-auto opacity-60'
               />
 
-              <ProductButtons
-                label='Stubbi'
-                icon='/images/strichliste-icons/icon-stubbi.png'
-                onAdd={(count) => {
-                  if (!isReadOnly && !isAddingProductTransaction) {
-                    setIsAddingProductTransaction(true);
-                    try {
-                      addTransaction(selectedDeckel.id, {
-                        date: new Date(),
-                        description: 'Stubbi',
-                        count,
-                        sum: -(count * 1.5),
-                      });
-                    } finally {
-                      setTimeout(() => setIsAddingProductTransaction(false), 300);
+              {products.map((product) => (
+                <ProductButtons
+                  key={product.id}
+                  label={product.name}
+                  icon={product.icon}
+                  onAdd={(count) => {
+                    if (!isReadOnly && !isAddingProductTransaction) {
+                      setIsAddingProductTransaction(true);
+                      try {
+                        addTransaction(selectedDeckel.id, {
+                          date: new Date(),
+                          description: product.name,
+                          count,
+                          sum: -(count * product.price),
+                        });
+                      } finally {
+                        setTimeout(() => setIsAddingProductTransaction(false), 300);
+                      }
                     }
-                  }
-                }}
-              />
-
-              <ProductButtons
-                label='Helles'
-                icon='/images/strichliste-icons/icon-helles.png'
-                onAdd={(count) => {
-                  if (!isReadOnly && !isAddingProductTransaction) {
-                    setIsAddingProductTransaction(true);
-                    try {
-                      addTransaction(selectedDeckel.id, {
-                        date: new Date(),
-                        description: 'Helles',
-                        count,
-                        sum: -(count * 2.0),
-                      });
-                    } finally {
-                      setTimeout(() => setIsAddingProductTransaction(false), 300);
-                    }
-                  }
-                }}
-              />
+                  }}
+                />
+              ))}
             </>
           ) : deckelList.length > 0 ? (
             <p className='text-gray-300 text-xl font-semibold mt-6'>
@@ -482,6 +481,14 @@ export const DeckelScreen: React.FC = () => {
           } else {
             console.warn('Transfer failed:', result.message);
           }
+        }}
+      />
+
+      <AdminModal
+        isOpen={isAdminModalOpen}
+        onClose={() => {
+          setIsAdminModalOpen(false);
+          setProducts(productService.getActiveProducts());
         }}
       />
     </div>

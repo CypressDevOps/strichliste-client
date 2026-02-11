@@ -31,3 +31,12 @@ export interface DeckelUIState {
   transactions?: Transaction[];
   rootKey?: string;
 }
+
+export interface Product {
+  id: string;
+  name: string;
+  price: number;
+  icon: string;
+  sortOrder: number;
+  isActive: boolean;
+}
