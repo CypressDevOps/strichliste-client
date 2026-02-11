@@ -42,46 +42,80 @@ export const DeckelTable: React.FC<DeckelTableProps> = ({
               </td>
             </tr>
           ) : (
-            transactions.map((t: Transaction) => {
-              const isSelected = selectedTxId === t.id;
+            <>
+              {transactions.map((t: Transaction, index: number) => {
+                const isSelected = selectedTxId === t.id;
+                const isPayment =
+                  t.sum > 0 && (t.description === 'Zahlung' || t.description === 'Einzahlung');
 
-              return (
-                <tr
-                  key={t.id}
-                  className={`border-b border-gray-800 cursor-pointer ${
-                    isSelected ? 'bg-white/5' : ''
-                  }`}
-                  onClick={() => setSelectedTxId((cur) => (cur === t.id ? null : (t.id ?? null)))}
-                >
-                  <td className='py-2 px-2 text-sm text-gray-300'>{formatDate(t.date)}</td>
+                // Berechne Zwischensumme bis zu diesem Punkt (nur negative Transaktionen)
+                let subtotal = 0;
+                if (isPayment) {
+                  for (let i = 0; i < index; i++) {
+                    if (transactions[i].sum < 0) {
+                      subtotal += transactions[i].sum;
+                    }
+                  }
+                }
 
-                  <td className='py-2 px-2 text-sm text-gray-300'>
-                    <div className='flex items-center gap-2'>
-                      <span>{t.description}</span>
-                      {t.count > 0 && t.count <= 5 && (
-                        <img
-                          src={`/images/strichliste-icons/strich-${t.count}.png`}
-                          alt={`${t.count}x`}
-                          className='h-6 inline-block opacity-80'
-                        />
-                      )}
-                    </div>
-                  </td>
-
-                  <td className='py-2 px-2 text-sm text-gray-300 text-right'>{t.count}</td>
-
-                  <td className='py-2 px-2 text-sm text-gray-300 text-right'>
-                    {t.sum < 0 ? (
-                      <span className='text-red-400 font-semibold'>{formatCurrency(t.sum)}</span>
-                    ) : t.sum > 0 ? (
-                      <span className='text-green-400 font-semibold'>+{formatCurrency(t.sum)}</span>
-                    ) : (
-                      <span>{formatCurrency(t.sum)}</span>
+                return (
+                  <React.Fragment key={t.id || index}>
+                    {/* Zwischensumme vor Zahlung */}
+                    {isPayment && subtotal < 0 && (
+                      <tr className='bg-gray-700/30 border-b border-gray-600'>
+                        <td className='py-2 px-2 text-sm text-gray-400 italic' colSpan={3}>
+                          Zwischensumme vor Zahlung
+                        </td>
+                        <td className='py-2 px-2 text-sm text-right font-semibold'>
+                          <span className='text-whte-400'>{formatCurrency(subtotal)}</span>
+                        </td>
+                      </tr>
                     )}
-                  </td>
-                </tr>
-              );
-            })
+
+                    {/* Eigentliche Transaktion */}
+                    <tr
+                      className={`border-b border-gray-800 cursor-pointer ${
+                        isSelected ? 'bg-white/5' : ''
+                      }`}
+                      onClick={() =>
+                        setSelectedTxId((cur) => (cur === t.id ? null : (t.id ?? null)))
+                      }
+                    >
+                      <td className='py-2 px-2 text-sm text-gray-300'>{formatDate(t.date)}</td>
+
+                      <td className='py-2 px-2 text-sm text-gray-300'>
+                        <div className='flex items-center gap-2'>
+                          <span>{t.description}</span>
+                          {t.count > 0 && t.count <= 5 && (
+                            <img
+                              src={`/images/strichliste-icons/strich-${t.count}.png`}
+                              alt={`${t.count}x`}
+                              className='h-6 inline-block opacity-80'
+                            />
+                          )}
+                        </div>
+                      </td>
+
+                      <td className='py-2 px-2 text-sm text-gray-300 text-right'>{t.count}</td>
+
+                      <td className='py-2 px-2 text-sm text-gray-300 text-right'>
+                        {t.sum < 0 ? (
+                          <span className='text-red-400 font-semibold'>
+                            {formatCurrency(t.sum)}
+                          </span>
+                        ) : t.sum > 0 ? (
+                          <span className='text-green-400 font-semibold'>
+                            +{formatCurrency(t.sum)}
+                          </span>
+                        ) : (
+                          <span>{formatCurrency(t.sum)}</span>
+                        )}
+                      </td>
+                    </tr>
+                  </React.Fragment>
+                );
+              })}
+            </>
           )}
         </tbody>
 
