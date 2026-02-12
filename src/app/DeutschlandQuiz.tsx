@@ -71,7 +71,10 @@ export const DeutschlandQuiz: React.FC<DeutschlandQuizProps> = ({ isOpen, onClos
 
   useEffect(() => {
     if (isOpen && questions.length === 0) {
-      startNewGame();
+      // Use setTimeout to avoid cascading renders
+      setTimeout(() => {
+        startNewGame();
+      }, 0);
     }
   }, [isOpen, questions.length]);
 

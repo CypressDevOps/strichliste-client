@@ -199,6 +199,66 @@ export const Game2048: React.FC<Game2048Props> = ({ isOpen, onClose }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, handleMove]);
 
+  // Touch controls for mobile/tablet
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchEndX = 0;
+    let touchEndY = 0;
+
+    const minSwipeDistance = 50; // Minimum swipe distance in pixels
+
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartX = e.changedTouches[0].screenX;
+      touchStartY = e.changedTouches[0].screenY;
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      touchEndX = e.changedTouches[0].screenX;
+      touchEndY = e.changedTouches[0].screenY;
+      handleSwipe();
+    };
+
+    const handleSwipe = () => {
+      const deltaX = touchEndX - touchStartX;
+      const deltaY = touchEndY - touchStartY;
+      const absDeltaX = Math.abs(deltaX);
+      const absDeltaY = Math.abs(deltaY);
+
+      // Check if swipe distance is sufficient
+      if (absDeltaX < minSwipeDistance && absDeltaY < minSwipeDistance) {
+        return;
+      }
+
+      // Determine direction (horizontal vs vertical)
+      if (absDeltaX > absDeltaY) {
+        // Horizontal swipe
+        if (deltaX > 0) {
+          handleMove('right');
+        } else {
+          handleMove('left');
+        }
+      } else {
+        // Vertical swipe
+        if (deltaY > 0) {
+          handleMove('down');
+        } else {
+          handleMove('up');
+        }
+      }
+    };
+
+    window.addEventListener('touchstart', handleTouchStart);
+    window.addEventListener('touchend', handleTouchEnd);
+
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [isOpen, handleMove]);
+
   const resetGame = () => {
     setGrid(initGrid());
     setScore(0);
@@ -302,7 +362,8 @@ export const Game2048: React.FC<Game2048Props> = ({ isOpen, onClose }) => {
 
         {/* Instructions */}
         <div className='text-center text-gray-400 text-xs mt-4'>
-          ⬅️ ➡️ ⬆️ ⬇️ Pfeiltasten zum Bewegen
+          <div>⬅️ ➡️ ⬆️ ⬇️ Pfeiltasten</div>
+          <div className='mt-1'>👆 oder Swipe (Wischen) auf Touchscreen</div>
         </div>
       </div>
     </div>
