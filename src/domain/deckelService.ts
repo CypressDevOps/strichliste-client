@@ -82,13 +82,22 @@ const isNewBrowserSession = (): boolean => {
 };
 
 // -----------------------------
-// HELFER: 05:00-Regel (NÄCHSTER TAG 05:00)
+// HELFER: 05:00-Regel (NÄCHSTER 05:00-Zeitpunkt nach closedAt)
 // -----------------------------
 const isAfterFiveAM = (now: Date, closedAt: Date): boolean => {
   const nextFiveAM = new Date(closedAt);
-  nextFiveAM.setDate(nextFiveAM.getDate() + 1);
-  nextFiveAM.setHours(5, 0, 0, 0);
-  return now.getTime() > nextFiveAM.getTime();
+  
+  // Wenn der Abend zwischen 00:00 und 04:59 geschlossen wurde,
+  // ist der nächste 05:00-Zeitpunkt am selben Kalendertag
+  if (closedAt.getHours() < 5) {
+    nextFiveAM.setHours(5, 0, 0, 0);
+  } else {
+    // Zwischen 05:00 und 23:59: nächster 05:00 ist am nächsten Tag
+    nextFiveAM.setDate(nextFiveAM.getDate() + 1);
+    nextFiveAM.setHours(5, 0, 0, 0);
+  }
+  
+  return now.getTime() >= nextFiveAM.getTime();
 };
 
 // -----------------------------

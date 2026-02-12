@@ -626,7 +626,6 @@ export const DeckelScreen: React.FC = () => {
         message={confirmState.message}
         confirmLabel={confirmState.label}
         confirmClassName={confirmState.confirmClassName}
-        showSavedInfo={false} // deaktiviert "Gespeicherte Information"
         onConfirm={() => {
           // Handle special confirm payloads
           if (confirmState.payload === 'ADD_MERGE_WARN') {

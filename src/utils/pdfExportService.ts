@@ -61,6 +61,14 @@ export async function generateMonthlyReportPDF(year: number, month: number): Pro
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
 
+  // Logo laden
+  try {
+    const logoImg = await loadImage('/images/logo.png');
+    doc.addImage(logoImg, 'PNG', pageWidth - 45, 10, 35, 35);
+  } catch (error) {
+    console.warn('Logo konnte nicht geladen werden:', error);
+  }
+
   // === 1. KOPFBEREICH ===
   doc.setFontSize(24);
   doc.setFont('helvetica', 'bold');

@@ -15,7 +15,6 @@ interface Props {
   onConfirm: () => void;
   onCancel: () => void;
   secondaryAction?: SecondaryAction; // optional: zeigt zusätzlichen Button links von Confirm
-  showSavedInfo?: boolean; // neu: steuert Anzeige "Gespeicherte Information"
   confirmClassName?: string;
 }
 
