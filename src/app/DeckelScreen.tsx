@@ -1,5 +1,5 @@
 // src/app/DeckelScreen.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 import { useDeckelState } from '../domain/deckelService';
 import { productService } from '../domain/productService';
@@ -30,6 +30,7 @@ import { AdminModal } from './AdminModal';
 import { CashReportModal } from './CashReportModal';
 import { DeckelOverviewModal } from './DeckelOverviewModal';
 import { EmergencyOverrideModal } from './EmergencyOverrideModal';
+import { BackupImportModal } from './BackupImportModal';
 import { DECKEL_STATUS } from '../domain/models';
 import {
   toDeckelForm,
@@ -37,8 +38,14 @@ import {
   getRootName,
   baseNameFromPossessive,
 } from '../utils/nameUtils';
+import {
+  exportBackup,
+  shouldRestoreFromBackup,
+  restoreFromLocalBackup,
+} from '../utils/backupService';
 
 export const DeckelScreen: React.FC = () => {
+  const [isRestoring, setIsRestoring] = useState(false);
   const [pendingAddName, setPendingAddName] = useState<string | null>(null);
   const [pendingAddOwnerId, setPendingAddOwnerId] = useState<string | null>(null);
   const [isAddingDeckel, setIsAddingDeckel] = useState(false);
@@ -53,9 +60,68 @@ export const DeckelScreen: React.FC = () => {
   const [isMenuDropdownOpen, setIsMenuDropdownOpen] = useState(false);
   const [isEmergencyOverrideOpen, setIsEmergencyOverrideOpen] = useState(false);
   const [emergencyOverrideActive, setEmergencyOverrideActive] = useState(false);
+  const [isBackupImportOpen, setIsBackupImportOpen] = useState(false);
+  const [isTechMenuOpen, setIsTechMenuOpen] = useState(false);
+
+  // Für 5x Tap auf Titel
+  const tapCountRef = useRef(0);
+  const tapTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleTitleTap = () => {
+    tapCountRef.current += 1;
+
+    // Timer zurücksetzen
+    if (tapTimerRef.current) {
+      clearTimeout(tapTimerRef.current);
+    }
+
+    // Nach 2 Sekunden Counter zurücksetzen
+    tapTimerRef.current = setTimeout(() => {
+      tapCountRef.current = 0;
+    }, 2000);
+
+    // Bei 5 Taps: Technisches Menü öffnen
+    if (tapCountRef.current === 5) {
+      tapCountRef.current = 0;
+      if (tapTimerRef.current) {
+        clearTimeout(tapTimerRef.current);
+      }
+      setIsTechMenuOpen(true);
+    }
+  };
+
+  // Auto-Restore beim App-Start
+  useEffect(() => {
+    if (shouldRestoreFromBackup()) {
+      setIsRestoring(true);
+      setTimeout(() => {
+        const success = restoreFromLocalBackup();
+        if (success) {
+          // Nach erfolgreichem Restore Seite neu laden
+          window.location.reload();
+        } else {
+          setIsRestoring(false);
+          alert('Fehler beim Wiederherstellen des Backups');
+        }
+      }, 100);
+    }
+  }, []);
 
   useEffect(() => {
     setProducts(productService.getActiveProducts());
+  }, []);
+
+  // Keyboard shortcut für Technisches Menü (Ctrl+Shift+B)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'B') {
+        e.preventDefault();
+        setIsTechMenuOpen(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   // Close dropdown when clicking outside
@@ -159,10 +225,29 @@ export const DeckelScreen: React.FC = () => {
   // --- WICHTIG: nur nicht-bezahlte Namen an das Modal übergeben
   const existingActiveNames = deckelList.filter((d) => d.status !== 'BEZAHLT').map((d) => d.name);
 
+  // Loading Screen während Restore
+  if (isRestoring) {
+    return (
+      <div className='flex flex-col items-center justify-center h-[100dvh] bg-gray-900 text-white'>
+        <div className='text-center'>
+          <div className='mb-4'>
+            <div className='inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-green-500'></div>
+          </div>
+          <h2 className='text-2xl font-bold mb-2'>Daten werden wiederhergestellt...</h2>
+          <p className='text-gray-400'>Bitte warten Sie einen Moment</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className='flex flex-col h-[100dvh] text-gray-200 text-white'>
       <header className='flex-shrink-0 px-4 pt-4 pb-2 border-b border-gray-300 flex justify-between items-center'>
-        <h1 className='text-green-600 text-2xl font-bold'>
+        <h1
+          className='text-green-600 text-2xl font-bold cursor-pointer select-none'
+          onClick={handleTitleTap}
+          title='5x tippen für technisches Menü'
+        >
           Deckelübersicht – {new Date().toLocaleDateString()}
         </h1>
         <div className='relative menu-dropdown-container'>
@@ -198,23 +283,9 @@ export const DeckelScreen: React.FC = () => {
                   setIsAdminModalOpen(true);
                   setIsMenuDropdownOpen(false);
                 }}
-                className='w-full text-left px-4 py-3 text-white hover:bg-gray-700 rounded-t-lg transition'
+                className='w-full text-left px-4 py-3 text-white hover:bg-gray-700 rounded-b-lg transition'
               >
                 Produktverwaltung
-              </button>
-              <button
-                onClick={() => {
-                  setIsEmergencyOverrideOpen(true);
-                  setIsMenuDropdownOpen(false);
-                }}
-                className='w-full text-left px-4 py-3 text-white hover:bg-gray-700 rounded-b-lg transition border-t border-gray-600'
-              >
-                <span className='flex items-center gap-2'>
-                  ⚠️ Notfall-Modus
-                  {emergencyOverrideActive && (
-                    <span className='text-xs bg-yellow-600 px-2 py-1 rounded'>AKTIV</span>
-                  )}
-                </span>
               </button>
             </div>
           )}
@@ -586,6 +657,77 @@ export const DeckelScreen: React.FC = () => {
         onConfirm={() => setEmergencyOverrideActive(!emergencyOverrideActive)}
         currentState={emergencyOverrideActive}
       />
+
+      {/* Technisches Menü (Ctrl+Shift+B) */}
+      {isTechMenuOpen && (
+        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
+          <div className='bg-gray-800 rounded-lg shadow-2xl w-96 border border-gray-700'>
+            <div className='px-6 py-4 border-b border-gray-700 flex justify-between items-center'>
+              <h2 className='text-xl font-bold text-white'>🔧 Technisches Menü</h2>
+              <button
+                onClick={() => setIsTechMenuOpen(false)}
+                className='text-gray-400 hover:text-white text-2xl font-bold'
+              >
+                ×
+              </button>
+            </div>
+            <div className='p-2'>
+              <button
+                onClick={() => {
+                  exportBackup();
+                  setIsTechMenuOpen(false);
+                }}
+                className='w-full text-left px-4 py-3 text-white hover:bg-gray-700 rounded transition flex items-center gap-3'
+              >
+                <span className='text-2xl'>💾</span>
+                <div>
+                  <div className='font-semibold'>Backup erstellen</div>
+                  <div className='text-sm text-gray-400'>Daten manuell exportieren</div>
+                </div>
+              </button>
+              <button
+                onClick={() => {
+                  setIsBackupImportOpen(true);
+                  setIsTechMenuOpen(false);
+                }}
+                className='w-full text-left px-4 py-3 text-white hover:bg-gray-700 rounded transition flex items-center gap-3'
+              >
+                <span className='text-2xl'>📁</span>
+                <div>
+                  <div className='font-semibold'>Backup importieren</div>
+                  <div className='text-sm text-gray-400'>Daten wiederherstellen</div>
+                </div>
+              </button>
+              <button
+                onClick={() => {
+                  setIsEmergencyOverrideOpen(true);
+                  setIsTechMenuOpen(false);
+                }}
+                className='w-full text-left px-4 py-3 text-white hover:bg-gray-700 rounded transition flex items-center gap-3'
+              >
+                <span className='text-2xl'>⚠️</span>
+                <div>
+                  <div className='font-semibold flex items-center gap-2'>
+                    Notfall-Modus
+                    {emergencyOverrideActive && (
+                      <span className='text-xs bg-yellow-600 px-2 py-1 rounded'>AKTIV</span>
+                    )}
+                  </div>
+                  <div className='text-sm text-gray-400'>Sicherheitssperren umgehen</div>
+                </div>
+              </button>
+            </div>
+            <div className='px-6 py-3 bg-gray-900 rounded-b-lg border-t border-gray-700'>
+              <p className='text-xs text-gray-500 text-center'>
+                <span className='font-mono text-gray-400'>Ctrl + Shift + B</span> oder{' '}
+                <span className='text-gray-400'>5x auf Titel tippen</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <BackupImportModal isOpen={isBackupImportOpen} onClose={() => setIsBackupImportOpen(false)} />
     </div>
   );
 };

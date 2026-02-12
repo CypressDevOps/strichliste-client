@@ -120,8 +120,8 @@ export const DeckelTable: React.FC<DeckelTableProps> = ({
         </tbody>
 
         <tfoot>
-          <tr className='border-t border-gray-700'>
-            <td className='py-3 px-2 font-semibold'>Gesamtergebnis</td>
+          <tr className='border-t border-gray-300'>
+            <td className='py-3 px-2 font-semibold'>Gastumsatz</td>
             <td />
             <td className='py-3 px-2 text-right font-semibold'>{totalCount}</td>
             <td className='py-3 px-2 text-right font-semibold'>

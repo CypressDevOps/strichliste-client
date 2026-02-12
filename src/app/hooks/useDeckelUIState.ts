@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { DeckelUIState, Transaction, DeckelStatus, DECKEL_STATUS } from '../../domain/models';
 import { getRootName } from '../../utils/nameUtils';
+import { saveBackupToLocalStorage } from '../../utils/backupService';
 
 interface UIHookProps {
   deckelList: DeckelUIState[];
@@ -121,6 +122,14 @@ export const useDeckelUIState = ({
   };
 
   const executeAbend = () => {
+    try {
+      // Erstelle Auto-Backup vor dem Abschließen
+      saveBackupToLocalStorage();
+    } catch (error) {
+      console.error('Backup-Fehler:', error);
+      // Fortfahren auch wenn Backup fehlschlägt
+    }
+
     abendAbschliessen();
     closeConfirm();
   };
