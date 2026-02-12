@@ -13,7 +13,7 @@ export default defineConfig({
     // PWA Plugin hinzufügen
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico'],
+      includeAssets: ['icons/*.png'],
       manifest: {
         name: 'Strichliste',
         short_name: 'Strichliste',
