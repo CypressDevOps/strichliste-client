@@ -15,8 +15,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icons/*.png'],
       manifest: {
-        name: 'Strichliste',
-        short_name: 'Strichliste',
+        name: 'Vereins-Kasse',
+        short_name: 'Vereins-Kasse',
         start_url: '/',
         display: 'standalone',
         background_color: '#000000',
