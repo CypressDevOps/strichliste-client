@@ -33,6 +33,10 @@ import { EmergencyOverrideModal } from './EmergencyOverrideModal';
 import { BackupImportModal } from './BackupImportModal';
 import { MonthlyReportModal } from './MonthlyReportModal';
 import { BelegSelectModal } from './BelegSelectModal';
+import { BeerClickerGame } from './BeerClickerGame';
+import { GameMenu } from './GameMenu';
+import { Game2048 } from './Game2048';
+import { DeutschlandQuiz } from './DeutschlandQuiz';
 import { DECKEL_STATUS } from '../domain/models';
 import {
   toDeckelForm,
@@ -69,9 +73,19 @@ export const DeckelScreen: React.FC = () => {
   const [isPdfSubmenuOpen, setIsPdfSubmenuOpen] = useState(false);
   const [isBelegSelectOpen, setIsBelegSelectOpen] = useState(false);
 
+  // Easter Egg Game States
+  const [isGameMenuOpen, setIsGameMenuOpen] = useState(false);
+  const [isBeerGameOpen, setIsBeerGameOpen] = useState(false);
+  const [is2048Open, setIs2048Open] = useState(false);
+  const [isDeutschlandQuizOpen, setIsDeutschlandQuizOpen] = useState(false);
+
   // Für 5x Tap auf Titel
   const tapCountRef = useRef(0);
   const tapTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Für 8x Tap auf Datum (Easter Egg)
+  const dateEasterEggCountRef = useRef(0);
+  const dateEasterEggTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleTitleTap = () => {
     tapCountRef.current += 1;
@@ -93,6 +107,29 @@ export const DeckelScreen: React.FC = () => {
         clearTimeout(tapTimerRef.current);
       }
       setIsTechMenuOpen(true);
+    }
+  };
+
+  const handleDateEasterEggTap = () => {
+    dateEasterEggCountRef.current += 1;
+
+    // Timer zurücksetzen
+    if (dateEasterEggTimerRef.current) {
+      clearTimeout(dateEasterEggTimerRef.current);
+    }
+
+    // Nach 2 Sekunden Counter zurücksetzen
+    dateEasterEggTimerRef.current = setTimeout(() => {
+      dateEasterEggCountRef.current = 0;
+    }, 2000);
+
+    // Bei 8 Taps: Game Menu öffnen! 🎮
+    if (dateEasterEggCountRef.current === 8) {
+      dateEasterEggCountRef.current = 0;
+      if (dateEasterEggTimerRef.current) {
+        clearTimeout(dateEasterEggTimerRef.current);
+      }
+      setIsGameMenuOpen(true);
     }
   };
 
@@ -253,12 +290,22 @@ export const DeckelScreen: React.FC = () => {
     <div className='flex flex-col h-[100dvh] text-gray-200 text-white'>
       <OfflineIndicator />
       <header className='flex-shrink-0 px-4 pt-4 pb-2 border-b border-gray-300 flex justify-between items-center'>
-        <h1
-          className='text-green-600 text-2xl font-bold cursor-pointer select-none'
-          onClick={handleTitleTap}
-          title='5x tippen für technisches Menü'
-        >
-          Deckelübersicht – {new Date().toLocaleDateString()}
+        <h1 className='text-green-600 text-2xl font-bold select-none'>
+          <span
+            className='cursor-pointer'
+            onClick={handleTitleTap}
+            title='5x tippen für technisches Menü'
+          >
+            Deckelübersicht
+          </span>
+          {' – '}
+          <span
+            className='cursor-pointer hover:text-green-500 transition-colors'
+            onClick={handleDateEasterEggTap}
+            title='🤫'
+          >
+            {new Date().toLocaleDateString()}
+          </span>
         </h1>
         <div className='relative menu-dropdown-container'>
           <button
@@ -786,6 +833,21 @@ export const DeckelScreen: React.FC = () => {
         isOpen={isBelegSelectOpen}
         onClose={() => setIsBelegSelectOpen(false)}
         deckelList={deckelList}
+      />
+
+      {/* Easter Egg: Game Menu & Games */}
+      <GameMenu
+        isOpen={isGameMenuOpen}
+        onClose={() => setIsGameMenuOpen(false)}
+        onSelectBeerClicker={() => setIsBeerGameOpen(true)}
+        onSelect2048={() => setIs2048Open(true)}
+        onSelectDeutschlandQuiz={() => setIsDeutschlandQuizOpen(true)}
+      />
+      <BeerClickerGame isOpen={isBeerGameOpen} onClose={() => setIsBeerGameOpen(false)} />
+      <Game2048 isOpen={is2048Open} onClose={() => setIs2048Open(false)} />
+      <DeutschlandQuiz
+        isOpen={isDeutschlandQuizOpen}
+        onClose={() => setIsDeutschlandQuizOpen(false)}
       />
     </div>
   );
