@@ -31,6 +31,8 @@ import { CashReportModal } from './CashReportModal';
 import { DeckelOverviewModal } from './DeckelOverviewModal';
 import { EmergencyOverrideModal } from './EmergencyOverrideModal';
 import { BackupImportModal } from './BackupImportModal';
+import { MonthlyReportModal } from './MonthlyReportModal';
+import { BelegSelectModal } from './BelegSelectModal';
 import { DECKEL_STATUS } from '../domain/models';
 import {
   toDeckelForm,
@@ -62,6 +64,9 @@ export const DeckelScreen: React.FC = () => {
   const [emergencyOverrideActive, setEmergencyOverrideActive] = useState(false);
   const [isBackupImportOpen, setIsBackupImportOpen] = useState(false);
   const [isTechMenuOpen, setIsTechMenuOpen] = useState(false);
+  const [isMonthlyReportOpen, setIsMonthlyReportOpen] = useState(false);
+  const [isPdfSubmenuOpen, setIsPdfSubmenuOpen] = useState(false);
+  const [isBelegSelectOpen, setIsBelegSelectOpen] = useState(false);
 
   // Für 5x Tap auf Titel
   const tapCountRef = useRef(0);
@@ -126,7 +131,10 @@ export const DeckelScreen: React.FC = () => {
 
   // Close dropdown when clicking outside
   useEffect(() => {
-    if (!isMenuDropdownOpen) return;
+    if (!isMenuDropdownOpen) {
+      setIsPdfSubmenuOpen(false);
+      return;
+    }
 
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -283,10 +291,48 @@ export const DeckelScreen: React.FC = () => {
                   setIsAdminModalOpen(true);
                   setIsMenuDropdownOpen(false);
                 }}
-                className='w-full text-left px-4 py-3 text-white hover:bg-gray-700 rounded-b-lg transition'
+                className='w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition'
               >
                 Produktverwaltung
               </button>
+              <div>
+                <button
+                  onClick={() => setIsPdfSubmenuOpen(!isPdfSubmenuOpen)}
+                  className={`w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition flex items-center justify-between ${!isPdfSubmenuOpen ? 'rounded-b-lg' : ''}`}
+                >
+                  <span>PDF-Export</span>
+                  <span
+                    className='text-gray-400 transform transition-transform'
+                    style={{ transform: isPdfSubmenuOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}
+                  >
+                    ›
+                  </span>
+                </button>
+                {isPdfSubmenuOpen && (
+                  <div className='bg-gray-900 border-t border-gray-700'>
+                    <button
+                      onClick={() => {
+                        setIsMonthlyReportOpen(true);
+                        setIsMenuDropdownOpen(false);
+                        setIsPdfSubmenuOpen(false);
+                      }}
+                      className='w-full text-left px-6 py-3 text-white hover:bg-gray-700 transition flex items-center gap-2'
+                    >
+                      <span className='text-base'>Monatsabschluss</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsBelegSelectOpen(true);
+                        setIsMenuDropdownOpen(false);
+                        setIsPdfSubmenuOpen(false);
+                      }}
+                      className='w-full text-left px-6 py-3 text-white hover:bg-gray-700 rounded-b-lg transition flex items-center gap-2'
+                    >
+                      <span className='text-base'>Quittung</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -728,6 +774,17 @@ export const DeckelScreen: React.FC = () => {
       )}
 
       <BackupImportModal isOpen={isBackupImportOpen} onClose={() => setIsBackupImportOpen(false)} />
+
+      <MonthlyReportModal
+        isOpen={isMonthlyReportOpen}
+        onClose={() => setIsMonthlyReportOpen(false)}
+      />
+
+      <BelegSelectModal
+        isOpen={isBelegSelectOpen}
+        onClose={() => setIsBelegSelectOpen(false)}
+        deckelList={deckelList}
+      />
     </div>
   );
 };
