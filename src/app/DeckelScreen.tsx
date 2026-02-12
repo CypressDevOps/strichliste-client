@@ -45,6 +45,7 @@ import {
   shouldRestoreFromBackup,
   restoreFromLocalBackup,
 } from '../utils/backupService';
+import { OfflineIndicator } from '../components/OfflineIndicator';
 
 export const DeckelScreen: React.FC = () => {
   const [isRestoring, setIsRestoring] = useState(false);
@@ -250,6 +251,7 @@ export const DeckelScreen: React.FC = () => {
 
   return (
     <div className='flex flex-col h-[100dvh] text-gray-200 text-white'>
+      <OfflineIndicator />
       <header className='flex-shrink-0 px-4 pt-4 pb-2 border-b border-gray-300 flex justify-between items-center'>
         <h1
           className='text-green-600 text-2xl font-bold cursor-pointer select-none'
