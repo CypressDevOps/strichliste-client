@@ -302,7 +302,7 @@ export const DeckelScreen: React.FC = () => {
           <span
             className='cursor-pointer hover:text-green-500 transition-colors'
             onClick={handleDateEasterEggTap}
-            title='🤫'
+            title=''
           >
             {new Date().toLocaleDateString()}
           </span>
