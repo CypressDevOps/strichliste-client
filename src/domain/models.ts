@@ -73,6 +73,8 @@ export interface BusinessData {
   email?: string;
   /** Logo-Pfad (z.B. /images/logo.png) */
   logoPath?: string;
+  /** Optional: Deckel-Hintergrund (z.B. /assets/Deckelhintergrund.png) */
+  backgroundPath?: string;
 }
 
 /**

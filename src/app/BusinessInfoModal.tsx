@@ -17,7 +17,6 @@ export const BusinessInfoModal: React.FC<BusinessInfoModalProps> = ({ isOpen, on
 
   const handleSave = () => {
     saveBusinessInfo(formData);
-    alert('Betriebsinformationen erfolgreich gespeichert!');
     onClose();
   };
 
@@ -50,6 +49,34 @@ export const BusinessInfoModal: React.FC<BusinessInfoModalProps> = ({ isOpen, on
     reader.onload = (event) => {
       const dataUrl = event.target?.result as string;
       setFormData({ ...formData, logoPath: dataUrl });
+    };
+    reader.onerror = () => {
+      alert('Fehler beim Laden des Bildes');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleBackgroundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Prüfe ob es ein Bild ist
+    if (!file.type.startsWith('image/')) {
+      alert('Bitte wählen Sie eine Bilddatei aus (PNG, JPG, etc.)');
+      return;
+    }
+
+    // Prüfe Dateigröße (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Bild ist zu groß. Maximale Größe: 2MB');
+      return;
+    }
+
+    // Konvertiere zu Data URL (base64) für localStorage
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setFormData({ ...formData, backgroundPath: dataUrl });
     };
     reader.onerror = () => {
       alert('Fehler beim Laden des Bildes');
@@ -208,6 +235,78 @@ export const BusinessInfoModal: React.FC<BusinessInfoModalProps> = ({ isOpen, on
               onChange={(e) => setFormData({ ...formData, logoPath: e.target.value })}
               className='mt-2 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white'
               placeholder='/images/logo.png oder data:image/...'
+            />
+          </div>
+
+          {/* Deckel-Hintergrund */}
+          <div>
+            <label className='block text-sm font-medium text-gray-700 mb-1'>
+              Deckel-Hintergrund (optional)
+            </label>
+
+            {/* Verstecktes File Input */}
+            <input
+              type='file'
+              id='background-upload'
+              accept='image/*'
+              onChange={handleBackgroundUpload}
+              className='hidden'
+            />
+
+            {/* Upload Button */}
+            <button
+              type='button'
+              onClick={() => document.getElementById('background-upload')?.click()}
+              className='mb-2 w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded transition flex items-center justify-center gap-2'
+            >
+              📁 Hintergrund auswählen
+            </button>
+
+            {/* Aktueller Pfad/Vorschau */}
+            {formData.backgroundPath && (
+              <div className='mt-2 p-3 bg-gray-50 rounded border border-gray-300'>
+                <p className='text-xs text-gray-600 mb-2'>Aktueller Hintergrund:</p>
+                <div className='flex items-center gap-3'>
+                  <img
+                    src={formData.backgroundPath}
+                    alt='Hintergrund Vorschau'
+                    className='h-16 w-auto object-contain bg-white border border-gray-200 rounded'
+                    onError={(e) => {
+                      // Wenn Bild nicht geladen werden kann, zeige Platzhalter
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                  <div className='flex-1 min-w-0'>
+                    <p className='text-xs text-gray-500 truncate'>
+                      {formData.backgroundPath.startsWith('data:')
+                        ? 'Hochgeladenes Bild (Base64)'
+                        : formData.backgroundPath}
+                    </p>
+                  </div>
+                  <button
+                    type='button'
+                    onClick={() => setFormData({ ...formData, backgroundPath: '' })}
+                    className='text-red-600 hover:text-red-800 text-sm'
+                    title='Hintergrund entfernen'
+                  >
+                    ❌
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <p className='text-xs text-gray-500 mt-2'>
+              Wählen Sie ein Bild aus (max. 2MB) oder geben Sie einen Pfad ein (z.B.
+              /assets/Deckelhintergrund.png)
+            </p>
+
+            {/* Manueller Pfad-Input */}
+            <input
+              type='text'
+              value={formData.backgroundPath || ''}
+              onChange={(e) => setFormData({ ...formData, backgroundPath: e.target.value })}
+              className='mt-2 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white'
+              placeholder='/assets/Deckelhintergrund.png oder data:image/...'
             />
           </div>
         </div>

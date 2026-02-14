@@ -56,6 +56,7 @@ import {
 import { OfflineIndicator } from '../components/OfflineIndicator';
 
 export const DeckelScreen: React.FC = () => {
+  const [businessInfo] = useState(() => loadBusinessInfo());
   const [isRestoring, setIsRestoring] = useState(false);
   const [pendingAddName, setPendingAddName] = useState<string | null>(null);
   const [pendingAddOwnerId, setPendingAddOwnerId] = useState<string | null>(null);
@@ -524,7 +525,7 @@ ${salesTransactions.map((tx) => `  - ${tx.description}: ${tx.sum.toFixed(2)}€`
           deckelList={deckelList}
           selectedDeckelId={selectedDeckelId}
           onSelect={handleDeckelClick}
-          deckelBackground={deckelBackground}
+          deckelBackground={businessInfo.backgroundPath || deckelBackground}
           paidDeckelBackground={paidDeckelBackground}
           onStatusChange={handleStatusChange}
         />
