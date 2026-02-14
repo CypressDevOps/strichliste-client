@@ -279,12 +279,13 @@ export async function exportReceiptToPDF(
   // Gesamtbetrag (prominent)
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
-  const summaryBoxY = yPosition - 1;
+  const summaryBoxY = yPosition - 3;
+  const summaryBoxHeight = 10;
   doc.setDrawColor(0);
-  doc.rect(marginLeft - 1, summaryBoxY, contentWidth + 2, 8);
+  doc.rect(marginLeft - 1, summaryBoxY, contentWidth + 2, summaryBoxHeight);
 
-  doc.text('GESAMTBETRAG:', marginLeft, yPosition);
-  doc.text(formatCurrencyDE(receipt.totalGross), marginLeft + contentWidth, yPosition, {
+  doc.text('GESAMTBETRAG:', marginLeft + 1, yPosition + 1);
+  doc.text(formatCurrencyDE(receipt.totalGross), marginLeft + contentWidth - 1, yPosition + 1, {
     align: 'right',
   });
 

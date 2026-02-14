@@ -971,6 +971,7 @@ ${salesTransactions.map((tx) => `  - ${tx.description}: ${tx.sum.toFixed(2)}€`
         isOpen={isBelegSelectOpen}
         onClose={() => setIsBelegSelectOpen(false)}
         deckelList={deckelList}
+        products={products}
       />
 
       {/* Easter Egg: Game Menu & Games */}

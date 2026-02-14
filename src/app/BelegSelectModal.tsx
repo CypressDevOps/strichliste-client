@@ -1,18 +1,22 @@
 // src/app/BelegSelectModal.tsx
 import React, { useState } from 'react';
-import { DeckelUIState, DECKEL_STATUS } from '../domain/models';
-import { generateBelegPDF, generateBelegPDFAsDataURL } from '../utils/pdfExportService';
+import { DeckelUIState, DECKEL_STATUS, Product } from '../domain/models';
+import { generateReceipt } from '../domain/receiptGenerator';
+import { exportReceiptToPDF } from '../domain/pdfExportService';
+import { loadBusinessInfo } from '../domain/businessInfoService';
 
 interface BelegSelectModalProps {
   isOpen: boolean;
   onClose: () => void;
   deckelList: DeckelUIState[];
+  products: Product[];
 }
 
 export const BelegSelectModal: React.FC<BelegSelectModalProps> = ({
   isOpen,
   onClose,
   deckelList,
+  products,
 }) => {
   const [selectedDeckel, setSelectedDeckel] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -34,13 +38,58 @@ export const BelegSelectModal: React.FC<BelegSelectModalProps> = ({
 
     setIsGenerating(true);
     try {
-      const selectedDeckelData = deckelList.filter((d) => d.id === selectedDeckel);
-      await generateBelegPDF(selectedDeckelData);
+      const deckel = deckelList.find((d) => d.id === selectedDeckel);
+      if (!deckel) {
+        alert('Deckel nicht gefunden');
+        return;
+      }
+
+      // Validiere Status
+      if (deckel.status !== DECKEL_STATUS.BEZAHLT) {
+        alert(`Beleg kann nur für bezahlte Deckel erstellt werden.\nStatus: ${deckel.status}`);
+        return;
+      }
+
+      // Nur Verkäufe (negative Transaktionen)
+      const transactions = deckel.transactions || [];
+      const salesTransactions = transactions.filter((tx) => tx.sum < 0);
+
+      if (salesTransactions.length === 0) {
+        alert('Gast hat keine Verkäufe - Beleg kann nicht erstellt werden');
+        return;
+      }
+
+      // Erstelle Tax-Rate-Map: Snacks = 7%, Rest = 19%
+      const taxRateMap = new Map<string, number>();
+      for (const product of products) {
+        const taxRate = product.category === 'Snacks' ? 7 : 19;
+        taxRateMap.set(product.name, taxRate);
+      }
+
+      // Berechne Gesamtsumme (BRUTTO)
+      const totalGrossToPay = Math.abs(salesTransactions.reduce((sum, tx) => sum + tx.sum, 0));
+      const amountReceived = Math.ceil(totalGrossToPay * 2) / 2; // Auf nächste 0,50€ aufrunden
+
+      // Generiere Receipt mit neuer Logik
+      const receipt = await generateReceipt({
+        business: loadBusinessInfo(),
+        transactions: salesTransactions,
+        paymentMethod: 'CASH',
+        paymentDetails: { amountReceived },
+        guestName: deckel.name,
+        tableNumber: deckel.id,
+        taxRateMap,
+      });
+
+      // Exportiere als PDF
+      await exportReceiptToPDF(receipt);
+      
       setSelectedDeckel(null);
       onClose();
     } catch (error) {
       console.error('Fehler beim Generieren des Belegs:', error);
-      alert('Fehler beim Erstellen des Belegs');
+      const errorMsg = error instanceof Error ? error.message : 'Unbekannter Fehler';
+      alert(`Fehler beim Erstellen des Belegs:\n${errorMsg}`);
     } finally {
       setIsGenerating(false);
     }
@@ -62,45 +111,62 @@ export const BelegSelectModal: React.FC<BelegSelectModalProps> = ({
 
     setIsGenerating(true);
     try {
-      const selectedDeckelData = deckelList.filter((d) => d.id === selectedDeckel);
-      const dataUrl = await generateBelegPDFAsDataURL(selectedDeckelData);
-
-      // Konvertiere Data URL zu Blob
-      const response = await fetch(dataUrl);
-      const blob = await response.blob();
-
-      // Erstelle sicheren Dateinamen (ohne Sonderzeichen)
-      const safeName = selectedDeckelData[0].name.replace(/[^a-zA-Z0-9]/g, '_');
-      const timestamp = new Date().getTime();
-      const filename = `Beleg_${safeName}_${timestamp}.pdf`;
-
-      const file = new File([blob], filename, {
-        type: 'application/pdf',
-        lastModified: timestamp,
-      });
-
-      // Prüfe ob Files geteilt werden können
-      if ('canShare' in navigator && !navigator.canShare({ files: [file] })) {
-        alert('PDF-Dateien können auf diesem Gerät nicht geteilt werden.');
-        setIsGenerating(false);
+      const deckel = deckelList.find((d) => d.id === selectedDeckel);
+      if (!deckel) {
+        alert('Deckel nicht gefunden');
         return;
       }
 
-      // Teile das PDF
-      await navigator.share({
-        files: [file],
-        title: 'Beleg',
-        text: `Beleg für ${selectedDeckelData[0].name}`,
+      // Validiere Status
+      if (deckel.status !== DECKEL_STATUS.BEZAHLT) {
+        alert(`Beleg kann nur für bezahlte Deckel erstellt werden.\nStatus: ${deckel.status}`);
+        return;
+      }
+
+      // Nur Verkäufe (negative Transaktionen)
+      const transactions = deckel.transactions || [];
+      const salesTransactions = transactions.filter((tx) => tx.sum < 0);
+
+      if (salesTransactions.length === 0) {
+        alert('Gast hat keine Verkäufe - Beleg kann nicht erstellt werden');
+        return;
+      }
+
+      // Erstelle Tax-Rate-Map: Snacks = 7%, Rest = 19%
+      const taxRateMap = new Map<string, number>();
+      for (const product of products) {
+        const taxRate = product.category === 'Snacks' ? 7 : 19;
+        taxRateMap.set(product.name, taxRate);
+      }
+
+      // Berechne Gesamtsumme (BRUTTO)
+      const totalGrossToPay = Math.abs(salesTransactions.reduce((sum, tx) => sum + tx.sum, 0));
+      const amountReceived = Math.ceil(totalGrossToPay * 2) / 2; // Auf nächste 0,50€ aufrunden
+
+      // Generiere Receipt mit neuer Logik
+      const receipt = await generateReceipt({
+        business: loadBusinessInfo(),
+        transactions: salesTransactions,
+        paymentMethod: 'CASH',
+        paymentDetails: { amountReceived },
+        guestName: deckel.name,
+        tableNumber: deckel.id,
+        taxRateMap,
       });
 
-      // Erfolgreich geteilt - Modal schließen
+      // Exportiere als PDF und teile es - TODO: PDF sharing funktionalität muss noch implementiert werden
+      // Vorerst: Exportiere einfach
+      await exportReceiptToPDF(receipt);
+      alert('PDF wurde heruntergeladen. Teilen-Funktion folgt in Kürze.');
+      
       setSelectedDeckel(null);
       onClose();
     } catch (error) {
       // AbortError bedeutet: User hat das Teilen abgebrochen - kein Fehler
       if ((error as Error).name !== 'AbortError') {
         console.error('Fehler beim Teilen des PDFs:', error);
-        alert('Fehler beim Teilen des PDFs');
+        const errorMsg = error instanceof Error ? error.message : 'Unbekannter Fehler';
+        alert(`Fehler beim Teilen des PDFs:\n${errorMsg}`);
       }
     } finally {
       setIsGenerating(false);
