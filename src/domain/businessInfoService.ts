@@ -9,7 +9,7 @@ const DEFAULT_BUSINESS_INFO: BusinessData = {
   taxNumber: '12 345 678 901',
   vatId: 'DE123456789',
   logoPath: '/images/logo.png',
-  backgroundPath: '/assets/Deckelhintergrund.png',
+  // backgroundPath wird nicht als Default gesetzt - wird stattdessen im UI mit Fallback geladen
 };
 
 /**

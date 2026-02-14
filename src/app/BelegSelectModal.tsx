@@ -50,9 +50,11 @@ export const BelegSelectModal: React.FC<BelegSelectModalProps> = ({
         return;
       }
 
-      // Nur Verkäufe (negative Transaktionen)
+      // Nur Verkäufe (negative Transaktionen, ohne Rückgeld)
       const transactions = deckel.transactions || [];
-      const salesTransactions = transactions.filter((tx) => tx.sum < 0);
+      const salesTransactions = transactions.filter(
+        (tx) => tx.sum < 0 && tx.description !== 'Rückgeld'
+      );
 
       if (salesTransactions.length === 0) {
         alert('Gast hat keine Verkäufe - Beleg kann nicht erstellt werden');
@@ -68,7 +70,31 @@ export const BelegSelectModal: React.FC<BelegSelectModalProps> = ({
 
       // Berechne Gesamtsumme (BRUTTO)
       const totalGrossToPay = Math.abs(salesTransactions.reduce((sum, tx) => sum + tx.sum, 0));
-      const amountReceived = Math.ceil(totalGrossToPay * 2) / 2; // Auf nächste 0,50€ aufrunden
+
+      // Alle positiven Transaktionen (Einzahlung + Zahlung) filtern
+      const allPaymentTransactions = transactions.filter((tx) => (tx.sum ?? 0) > 0);
+      const totalPaidAmount = allPaymentTransactions.reduce((sum, tx) => sum + (tx.sum ?? 0), 0);
+
+      let amountReceived: number;
+
+      // Wenn zahlungen mit Rückgeld-Info vorhanden sind, nutze den Gesamtbetrag
+      const paymentWithDetails = allPaymentTransactions.find(
+        (tx) => tx.amountReceived && tx.changeGiven !== undefined
+      );
+
+      if (paymentWithDetails?.amountReceived && paymentWithDetails?.changeGiven !== undefined) {
+        // Bei nur einer Payment-TX mit Details: nutze diese
+        // Bei mehreren: summiere alle positiven Transaktionen
+        if (allPaymentTransactions.length === 1) {
+          amountReceived = paymentWithDetails.amountReceived;
+        } else {
+          // Mehrere Zahlungen/Einzahlungen - nutze Gesamtsumme
+          amountReceived = totalPaidAmount;
+        }
+      } else {
+        // Fallback: Aufrunden auf nächste 0,50€
+        amountReceived = Math.ceil(totalGrossToPay * 2) / 2;
+      }
 
       // Generiere Receipt mit neuer Logik
       const receipt = await generateReceipt({
@@ -83,7 +109,7 @@ export const BelegSelectModal: React.FC<BelegSelectModalProps> = ({
 
       // Exportiere als PDF
       await exportReceiptToPDF(receipt);
-      
+
       setSelectedDeckel(null);
       onClose();
     } catch (error) {
@@ -123,9 +149,11 @@ export const BelegSelectModal: React.FC<BelegSelectModalProps> = ({
         return;
       }
 
-      // Nur Verkäufe (negative Transaktionen)
+      // Nur Verkäufe (negative Transaktionen, ohne Rückgeld)
       const transactions = deckel.transactions || [];
-      const salesTransactions = transactions.filter((tx) => tx.sum < 0);
+      const salesTransactions = transactions.filter(
+        (tx) => tx.sum < 0 && tx.description !== 'Rückgeld'
+      );
 
       if (salesTransactions.length === 0) {
         alert('Gast hat keine Verkäufe - Beleg kann nicht erstellt werden');
@@ -141,7 +169,31 @@ export const BelegSelectModal: React.FC<BelegSelectModalProps> = ({
 
       // Berechne Gesamtsumme (BRUTTO)
       const totalGrossToPay = Math.abs(salesTransactions.reduce((sum, tx) => sum + tx.sum, 0));
-      const amountReceived = Math.ceil(totalGrossToPay * 2) / 2; // Auf nächste 0,50€ aufrunden
+
+      // Alle positiven Transaktionen (Einzahlung + Zahlung) summieren
+      const allPaymentTransactions = transactions.filter((tx) => (tx.sum ?? 0) > 0);
+      const totalPaidAmount = allPaymentTransactions.reduce((sum, tx) => sum + (tx.sum ?? 0), 0);
+
+      let amountReceived: number;
+
+      // Wenn zahlungen mit Rückgeld-Info vorhanden sind, nutze den Gesamtbetrag
+      const paymentWithDetails = allPaymentTransactions.find(
+        (tx) => tx.amountReceived && tx.changeGiven !== undefined
+      );
+
+      if (paymentWithDetails?.amountReceived && paymentWithDetails?.changeGiven !== undefined) {
+        // Bei nur einer Payment-TX mit Details: nutze diese
+        // Bei mehreren: summiere alle positiven Transaktionen
+        if (allPaymentTransactions.length === 1) {
+          amountReceived = paymentWithDetails.amountReceived;
+        } else {
+          // Mehrere Zahlungen/Einzahlungen - nutze Gesamtsumme
+          amountReceived = totalPaidAmount;
+        }
+      } else {
+        // Fallback: Aufrunden auf nächste 0,50€
+        amountReceived = Math.ceil(totalGrossToPay * 2) / 2;
+      }
 
       // Generiere Receipt mit neuer Logik
       const receipt = await generateReceipt({
@@ -158,7 +210,7 @@ export const BelegSelectModal: React.FC<BelegSelectModalProps> = ({
       // Vorerst: Exportiere einfach
       await exportReceiptToPDF(receipt);
       alert('PDF wurde heruntergeladen. Teilen-Funktion folgt in Kürze.');
-      
+
       setSelectedDeckel(null);
       onClose();
     } catch (error) {

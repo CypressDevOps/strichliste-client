@@ -56,7 +56,7 @@ import {
 import { OfflineIndicator } from '../components/OfflineIndicator';
 
 export const DeckelScreen: React.FC = () => {
-  const [businessInfo] = useState(() => loadBusinessInfo());
+  const [businessInfo, setBusinessInfo] = useState(() => loadBusinessInfo());
   const [isRestoring, setIsRestoring] = useState(false);
   const [pendingAddName, setPendingAddName] = useState<string | null>(null);
   const [pendingAddOwnerId, setPendingAddOwnerId] = useState<string | null>(null);
@@ -709,7 +709,6 @@ ${salesTransactions.map((tx) => `  - ${tx.description}: ${tx.sum.toFixed(2)}€`
       />
 
       <PayDeckelModal
-        key={modals.pay ? 'open' : 'closed'}
         isOpen={modals.pay}
         onClose={() => setModals((m) => ({ ...m, pay: false }))}
         onGoBack={() => {
@@ -723,7 +722,6 @@ ${salesTransactions.map((tx) => `  - ${tx.description}: ${tx.sum.toFixed(2)}€`
       />
 
       <TransactionModal
-        key={modals.transaction ? 'open' : 'closed'}
         isOpen={modals.transaction}
         onClose={() => setModals((m) => ({ ...m, transaction: false }))}
         onGoBack={() => {
@@ -861,7 +859,14 @@ ${salesTransactions.map((tx) => `  - ${tx.description}: ${tx.sum.toFixed(2)}€`
         }}
       />
 
-      <BusinessInfoModal isOpen={isBusinessInfoOpen} onClose={() => setIsBusinessInfoOpen(false)} />
+      <BusinessInfoModal
+        isOpen={isBusinessInfoOpen}
+        onClose={() => {
+          setIsBusinessInfoOpen(false);
+          // Reload businessInfo nach Speichern
+          setBusinessInfo(loadBusinessInfo());
+        }}
+      />
 
       <CashReportModal isOpen={isCashReportOpen} onClose={() => setIsCashReportOpen(false)} />
 

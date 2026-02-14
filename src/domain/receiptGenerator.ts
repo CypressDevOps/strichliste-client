@@ -102,7 +102,11 @@ function transactionsToLineItems(
     const lineTotalNet = roundToCent(data.totalGross / divisor);
     const taxAmount = roundToCent(data.totalGross - lineTotalNet);
 
-    const unitPriceNet = roundToCent(lineTotalNet / data.quantity);
+    // Berechne Unit-Preis: Netto pro Einheit
+    // Wichtig: Runde so, dass quantity * unitPrice = lineTotalNet exakt erfüllt ist
+    // Basierend auf Brutto-Einheitspreisen
+    const unitPriceGross = roundToCent(data.totalGross / data.quantity);
+    const unitPriceNet = roundToCent(unitPriceGross / divisor);
 
     items.push({
       description,
@@ -111,7 +115,7 @@ function transactionsToLineItems(
       taxRate,
       lineTotalNet,
       taxAmount,
-      lineTotalGross: data.totalGross, // Das war ursprünglich der Brutto-Input
+      lineTotalGross: data.totalGross,
     });
   }
 

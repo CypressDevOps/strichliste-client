@@ -19,6 +19,10 @@ export interface Transaction {
   sum: number;
   /** Optionales Feld: Zeigt von welchem Gast-Deckel die Transaktion übertragen wurde */
   transferredFrom?: string;
+  /** Bei Barzahlung mit Rückgeld: Der tatsächlich erhaltene Betrag */
+  amountReceived?: number;
+  /** Bei Barzahlung mit Rückgeld: Das zurückgegebene Wechselgeld */
+  changeGiven?: number;
 }
 
 export interface DeckelUIState {

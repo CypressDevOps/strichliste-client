@@ -297,26 +297,52 @@ export const useDeckelUIState = ({
     setModals((m) => ({ ...m, confirm: false }));
   };
 
-  const handlePayConfirm = (amount: number, deckelId?: string, moveToGone?: boolean) => {
+  const handlePayConfirm = (
+    amount: number,
+    deckelId?: string,
+    moveToGone?: boolean,
+    paymentDetails?: { amountReceived: number; changeGiven: number }
+  ) => {
     const targetDeckelId = deckelId ?? selectedDeckelId;
     if (!targetDeckelId) return;
 
     const deckel = deckelList.find((d) => d.id === targetDeckelId);
     if (!deckel) return;
 
+    // Wenn Rückgeld gegeben wurde, nutze den vollen eingegangenen Betrag
+    // Ansonsten nutze den berechneten amount (Netto-Schulden)
+    const transactionSum = paymentDetails ? paymentDetails.amountReceived : amount;
+
     const oldSum = deckel.transactions?.reduce((acc, t) => acc + (t.sum ?? 0), 0) ?? 0;
-    const newSum = oldSum + amount;
+    const newSum = oldSum + transactionSum;
 
     const tx: Transaction = {
       date: new Date(),
       description: 'Zahlung',
       count: 1,
-      sum: amount,
+      sum: transactionSum,
+      // Wenn Rückgeld gegeben wurde, speichere die Details
+      ...(paymentDetails && {
+        amountReceived: paymentDetails.amountReceived,
+        changeGiven: paymentDetails.changeGiven,
+      }),
     };
 
     addTransaction(targetDeckelId, tx);
 
-    if (newSum === 0) {
+    // Wenn Rückgeld gegeben wurde, füge auch einen Rückgeld-Eintrag hinzu
+    if (paymentDetails && paymentDetails.changeGiven > 0) {
+      const changeTx: Transaction = {
+        date: new Date(),
+        description: `Rückgeld`,
+        count: 1,
+        sum: -paymentDetails.changeGiven,
+      };
+      addTransaction(targetDeckelId, changeTx);
+    }
+
+    if (newSum === 0 || paymentDetails) {
+      // Bei Rückgeld-Zahlung wird Deckel immer als BEZAHLT markiert
       markDeckelAsPaid(targetDeckelId, true);
     } else if (moveToGone) {
       // Wenn Guthaben gewählt wurde, verschiebe Deckel nach GONE

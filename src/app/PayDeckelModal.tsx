@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DeckelUIState } from '../domain/models';
 
 interface PayDeckelModalProps {
@@ -6,7 +6,12 @@ interface PayDeckelModalProps {
   onClose: () => void;
   onGoBack?: () => void;
   totalSum: number;
-  onConfirm: (amount: number, deckelId?: string, moveToGone?: boolean) => void;
+  onConfirm: (
+    amount: number,
+    deckelId?: string,
+    moveToGone?: boolean,
+    paymentDetails?: { amountReceived: number; changeGiven: number }
+  ) => void;
   deckelList?: DeckelUIState[];
   selectedDeckelId: string | null;
 }
@@ -25,6 +30,17 @@ export const PayDeckelModal: React.FC<PayDeckelModalProps> = ({
     selectedDeckelId
   );
   const [pendingPayment, setPendingPayment] = useState<{ amount: number } | null>(null);
+  const [giveChangeBack, setGiveChangeBack] = useState(true);
+
+  // Sync internal state with prop whenever selectedDeckelId changes or modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setInternalSelectedDeckelId(selectedDeckelId);
+      // Reset custom amount and payment details when deckel changes
+      setCustom('');
+      setPendingPayment(null);
+    }
+  }, [selectedDeckelId, isOpen]);
 
   if (!isOpen) return null;
 
@@ -89,6 +105,17 @@ export const PayDeckelModal: React.FC<PayDeckelModalProps> = ({
     ? (currentDeckel.transactions?.reduce((acc, t) => acc + (t.sum ?? 0), 0) ?? 0)
     : totalSum;
 
+  // Debug-Log
+  console.log('PayDeckelModal Debug:', {
+    selectedDeckelId: internalSelectedDeckelId,
+    currentDeckelName: currentDeckel?.name,
+    currentDeckelStatus: currentDeckel?.status,
+    transactionCount: currentDeckel?.transactions?.length ?? 0,
+    transactions:
+      currentDeckel?.transactions?.map((t) => ({ description: t.description, sum: t.sum })) ?? [],
+    currentTotalSum,
+  });
+
   // Wenn Gesamtergebnis >= 0, kann nicht gezahlt werden
   if (currentTotalSum >= 0) {
     return (
@@ -144,7 +171,7 @@ export const PayDeckelModal: React.FC<PayDeckelModalProps> = ({
     return (
       <div className='fixed inset-0 bg-black/70 flex items-center justify-center z-50'>
         <div className='bg-gray-800 p-6 rounded-lg w-80 text-white'>
-          <h2 className='text-xl font-bold mb-4'>Zahlungsart wählen</h2>
+          <h2 className='text-xl font-bold mb-4'>Überzahlung bestätigen</h2>
 
           <div className='mb-4 p-3 bg-gray-700 rounded'>
             <p className='text-sm text-gray-300'>
@@ -154,35 +181,56 @@ export const PayDeckelModal: React.FC<PayDeckelModalProps> = ({
               Gezahlter Betrag:{' '}
               <span className='font-bold text-white'>{pendingPayment.amount.toFixed(2)} €</span>
             </p>
-            <p className='text-sm text-green-400 font-bold mt-2'>Rückgeld: {change.toFixed(2)} €</p>
+            <p className='text-sm text-yellow-400 font-bold mt-2'>
+              Differenz: {change.toFixed(2)} €
+            </p>
           </div>
+
+          {/* Checkbox für Rückgeld */}
+          <label className='flex items-center gap-3 mb-4 p-3 bg-gray-700 rounded cursor-pointer hover:bg-gray-600'>
+            <input
+              type='checkbox'
+              checked={giveChangeBack}
+              onChange={(e) => setGiveChangeBack(e.target.checked)}
+              className='w-5 h-5 cursor-pointer'
+            />
+            <span className='flex-1'>
+              <div className='font-semibold'>Rückgeld auszahlen</div>
+              <div className='text-xs text-gray-300 mt-1'>
+                {giveChangeBack
+                  ? `Gast erhält ${change.toFixed(2)} € zurück (Deckel wird bezahlt)`
+                  : 'Differenz bleibt als Guthaben auf dem Deckel'}
+              </div>
+            </span>
+          </label>
 
           <div className='flex flex-col gap-3'>
             <button
               className='bg-blue-700 hover:bg-blue-600 py-3 rounded font-semibold'
               onClick={() => {
-                // Rückgeld: Exakt den Deckelbetrag zahlen
-                onConfirm(abs, internalSelectedDeckelId ?? undefined);
+                if (giveChangeBack) {
+                  // Rückgeld auszahlen: Deckelbetrag wird ausgeglichen, Rückgeld-Info wird mitgegeben
+                  onConfirm(abs, internalSelectedDeckelId ?? undefined, false, {
+                    amountReceived: pendingPayment.amount,
+                    changeGiven: change,
+                  });
+                } else {
+                  // Als Guthaben behalten: Voller Betrag wird gezahlt
+                  onConfirm(pendingPayment.amount, internalSelectedDeckelId ?? undefined, false);
+                }
                 setPendingPayment(null);
+                setGiveChangeBack(true); // Reset für nächstes Mal
               }}
             >
-              Mit Rückgeld ({change.toFixed(2)} €)
-            </button>
-
-            <button
-              className='bg-green-700 hover:bg-green-600 py-3 rounded font-semibold'
-              onClick={() => {
-                // Guthaben: Den vollen Betrag zahlen (erzeugt Guthaben) und Deckel nach GONE verschieben
-                onConfirm(pendingPayment.amount, internalSelectedDeckelId ?? undefined, true);
-                setPendingPayment(null);
-              }}
-            >
-              Als Guthaben behalten
+              Zahlung bestätigen
             </button>
 
             <button
               className='mt-2 text-gray-300 underline'
-              onClick={() => setPendingPayment(null)}
+              onClick={() => {
+                setPendingPayment(null);
+                setGiveChangeBack(true); // Reset
+              }}
             >
               Zurück
             </button>

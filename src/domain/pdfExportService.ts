@@ -315,6 +315,8 @@ export async function exportReceiptToPDF(
       marginLeft,
       yPosition
     );
+    doc.setFont('helvetica', 'normal');
+    yPosition += 4;
   } else if (isCardPayment(receipt.paymentDetails)) {
     doc.text('Zahlungsart: Kartenzahlung', marginLeft, yPosition);
     yPosition += 4;

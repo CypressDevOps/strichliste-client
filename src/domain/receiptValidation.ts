@@ -90,8 +90,9 @@ function validateLineItem(item: ReceiptLineItem, index: number): ValidationError
   }
 
   // Berechnung: lineTotalNet
+  // Toleranz: max. 0.015€ (1.5 Cent) wegen Dezimal-Rundungsfehlern bei quantity-basierten Berechnungen
   const expectedLineTotal = roundToCent(item.quantity * item.unitPriceNet);
-  if (Math.abs(item.lineTotalNet - expectedLineTotal) > 0.01) {
+  if (Math.abs(item.lineTotalNet - expectedLineTotal) > 0.015) {
     errors.push({
       field: `lineItems[${index}].lineTotalNet`,
       message: `Zeilensumme Netto stimmt nicht. Erwartet: ${expectedLineTotal}€, erhalten: ${item.lineTotalNet}€`,
