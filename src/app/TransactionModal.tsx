@@ -42,6 +42,9 @@ export const TransactionModal: React.FC<Props> = ({
       return;
     }
 
+    // Synchronisiere internalSelectedDeckelId mit selectedDeckelId wenn Modal öffnet
+    setInternalSelectedDeckelId(selectedDeckelId);
+
     // setState asynchron ausführen, um mögliche "cascading renders" zu vermeiden
     timerRef.current = window.setTimeout(() => {
       setAmount('');
@@ -61,13 +64,12 @@ export const TransactionModal: React.FC<Props> = ({
       }
       document.body.style.overflow = prevOverflow;
     };
-  }, [isOpen]);
+  }, [isOpen, selectedDeckelId]);
 
   const choosePreset = (value: number) => {
-    setAmount(String(value));
-    setError('');
-    // Fokus auf Input, falls vorhanden
-    setTimeout(() => inputRef.current?.focus(), 0);
+    // Beim Preset-Button: direkt bestätigen ohne nochmal auf Button klicken zu müssen
+    onConfirm(value, internalSelectedDeckelId ?? undefined);
+    onClose();
   };
 
   const handleConfirm = () => {
