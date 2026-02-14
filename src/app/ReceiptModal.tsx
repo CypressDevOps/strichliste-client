@@ -1,5 +1,12 @@
-import React from 'react';
-import { GastBeleg, CashPayment, CardPayment, TransferPayment, PaymentDetails } from '../domain/models';
+import React, { useState } from 'react';
+import {
+  GastBeleg,
+  CashPayment,
+  CardPayment,
+  TransferPayment,
+  PaymentDetails,
+} from '../domain/models';
+import { printReceipt, exportReceiptToPDF } from '../domain/pdfExportService';
 
 interface ReceiptModalProps {
   isOpen: boolean;
@@ -41,7 +48,41 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   onPrint,
   onDownload,
 }) => {
+  const [isProcessing, setIsProcessing] = useState(false);
+
   if (!isOpen || !receipt) return null;
+
+  const handlePrint = async () => {
+    try {
+      setIsProcessing(true);
+      if (onPrint) {
+        await onPrint();
+      } else {
+        await printReceipt(receipt);
+      }
+    } catch (err) {
+      console.error('Druck fehlgeschlagen:', err);
+      alert('Drucken fehlgeschlagen');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    try {
+      setIsProcessing(true);
+      if (onDownload) {
+        await onDownload();
+      } else {
+        await exportReceiptToPDF(receipt);
+      }
+    } catch (err) {
+      console.error('Download fehlgeschlagen:', err);
+      alert('Download fehlgeschlagen');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   return (
     <div className='fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4'>
@@ -70,7 +111,9 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             )}
             <div>
               <h1 className='text-2xl font-bold text-gray-900'>{receipt.business.businessName}</h1>
-              <p className='text-sm text-gray-600 whitespace-pre-line'>{receipt.business.address}</p>
+              <p className='text-sm text-gray-600 whitespace-pre-line'>
+                {receipt.business.address}
+              </p>
             </div>
           </div>
 
@@ -180,7 +223,9 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             </div>
             <div className='flex justify-between text-lg border-t-2 border-green-400 pt-2'>
               <span className='font-bold'>GESAMTBETRAG:</span>
-              <span className='font-bold text-green-700'>{formatCurrencyDE(receipt.totalGross)}</span>
+              <span className='font-bold text-green-700'>
+                {formatCurrencyDE(receipt.totalGross)}
+              </span>
             </div>
           </div>
 
@@ -190,9 +235,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             {isCashPayment(receipt.paymentDetails) && (
               <>
                 <p>Zahlungsart: Bargeld</p>
-                <p>
-                  Erhaltener Betrag: {formatCurrencyDE(receipt.paymentDetails.amountReceived)}
-                </p>
+                <p>Erhaltener Betrag: {formatCurrencyDE(receipt.paymentDetails.amountReceived)}</p>
                 <p className='font-semibold'>
                   Rückgeld: {formatCurrencyDE(receipt.paymentDetails.changeGiven)}
                 </p>
@@ -219,33 +262,29 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           {/* Fußbereich */}
           <div className='text-center py-6 border-t-2 border-gray-300 text-sm'>
             <p className='font-semibold mb-2 text-lg'>Vielen Dank für Ihren Besuch!</p>
-            <p className='text-gray-600 mb-4'>Bitte kommen Sie bald wieder!</p>
-
-            {/* Hash für Manipulationsschutz */}
-            <div className='mt-4 pt-4 border-t border-gray-300 text-xs text-gray-500 font-mono'>
-              <p className='break-all'>Hash: {receipt.receiptHash}</p>
-              <p className='text-gray-400 mt-1'>SHA-256 Manipulationsschutz</p>
-            </div>
           </div>
         </div>
 
         {/* Action Footer */}
         <div className='sticky bottom-0 bg-gray-100 px-6 py-4 border-t border-gray-300 flex gap-2 justify-end print:hidden'>
           <button
-            onClick={onPrint}
-            className='px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition'
+            onClick={handlePrint}
+            disabled={isProcessing}
+            className='px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 transition'
           >
-            🖨️ Drucken
+            🖨️ {isProcessing ? 'Verarbeite...' : 'Drucken'}
           </button>
           <button
-            onClick={onDownload}
-            className='px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition'
+            onClick={handleDownload}
+            disabled={isProcessing}
+            className='px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 transition'
           >
-            📥 Download
+            📥 {isProcessing ? 'Verarbeite...' : 'Download'}
           </button>
           <button
             onClick={onClose}
-            className='px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition'
+            disabled={isProcessing}
+            className='px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 disabled:bg-gray-400 transition'
           >
             Schließen
           </button>

@@ -27,7 +27,7 @@ const MAX_PRICE = 99999.99;
 /**
  * Hilfsfunktion: Runde auf 2 Dezimalstellen (Cent-Präzision)
  */
-function roundToCent(value: number): number {
+export function roundToCent(value: number): number {
   return Math.round(value * 100) / 100;
 }
 

@@ -58,6 +58,9 @@ function generateReceiptNumber(): string {
  * Konvertiert Transaktionen zu ReceiptLineItems
  * Gruppiert doppelte Produkte und berechnet Steuern
  *
+ * WICHTIG: tx.sum enthält BRUTTO-Preise (was der Gast sieht),
+ * diese werden in Netto + Steuern aufgeteilt
+ *
  * @param transactions Transaktionen vom Deckel (mit .sum < 0 für Verkäufe)
  * @param taxRateMap Mapping von Produktname zu Steuersatz (optional)
  */
@@ -66,44 +69,49 @@ function transactionsToLineItems(
   taxRateMap?: Map<string, number>
 ): ReceiptLineItem[] {
   // Gruppiere Transaktionen nach Produktname
-  const itemMap = new Map<string, { quantity: number; totalNet: number }>();
+  const itemMap = new Map<string, { quantity: number; totalGross: number }>();
 
   for (const tx of transactions) {
     // Nur negative Transaktionen sind Verkäufe
     if (tx.sum >= 0) continue;
 
-    const amount = Math.abs(tx.sum);
+    const amountGross = Math.abs(tx.sum); // tx.sum ist BRUTTO!
     const quantity = Math.abs(tx.count || 1);
 
     if (itemMap.has(tx.description)) {
       const existing = itemMap.get(tx.description)!;
       existing.quantity += quantity;
-      existing.totalNet = roundToCent(existing.totalNet + amount);
+      existing.totalGross = roundToCent(existing.totalGross + amountGross);
     } else {
       itemMap.set(tx.description, {
         quantity,
-        totalNet: roundToCent(amount),
+        totalGross: roundToCent(amountGross),
       });
     }
   }
 
   // Konvertiere zu ReceiptLineItems mit Steuern
+  // Brutto-Betrag wird in Netto + Steuer aufgeteilt
   const items: ReceiptLineItem[] = [];
 
   for (const [description, data] of itemMap.entries()) {
     const taxRate = taxRateMap?.get(description) ?? 19; // Default: 19% VAT
-    const unitPriceNet = roundToCent(data.totalNet / data.quantity);
-    const taxAmount = roundToCent(data.totalNet * (taxRate / 100));
-    const lineTotalGross = roundToCent(data.totalNet + taxAmount);
+
+    // Berechne Netto aus Brutto: Netto = Brutto / (1 + taxRate/100)
+    const divisor = 1 + taxRate / 100; // z.B. 1.19 für 19%
+    const lineTotalNet = roundToCent(data.totalGross / divisor);
+    const taxAmount = roundToCent(data.totalGross - lineTotalNet);
+
+    const unitPriceNet = roundToCent(lineTotalNet / data.quantity);
 
     items.push({
       description,
-      quantity: Math.round(data.quantity), // Stelle sicher ganz Zahl
+      quantity: Math.round(data.quantity),
       unitPriceNet,
       taxRate,
-      lineTotalNet: data.totalNet,
+      lineTotalNet,
       taxAmount,
-      lineTotalGross,
+      lineTotalGross: data.totalGross, // Das war ursprünglich der Brutto-Input
     });
   }
 
@@ -165,9 +173,7 @@ export async function generateReceipt(params: GenerateReceiptParams): Promise<Ga
   }
 
   // 2. Berechne Summen
-  const totalNet = roundToCent(
-    lineItems.reduce((sum, item) => sum + item.lineTotalNet, 0)
-  );
+  const totalNet = roundToCent(lineItems.reduce((sum, item) => sum + item.lineTotalNet, 0));
   const totalTax = roundToCent(lineItems.reduce((sum, item) => sum + item.taxAmount, 0));
   const totalGross = roundToCent(totalNet + totalTax);
 

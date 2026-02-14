@@ -85,7 +85,13 @@ function generateSimpleHash(data: string): string {
 
   // Erweitere auf 64 Zeichen (SHA-256 ähnlich)
   const hex = (Math.abs(hash) >>> 0).toString(16).padStart(8, '0');
-  const extended = hex + data.substring(0, 56).split('').map((c) => c.charCodeAt(0).toString(16)).join('');
+  const extended =
+    hex +
+    data
+      .substring(0, 56)
+      .split('')
+      .map((c) => c.charCodeAt(0).toString(16))
+      .join('');
   return extended.substring(0, 64).padEnd(64, '0');
 }
 
