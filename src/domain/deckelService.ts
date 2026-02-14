@@ -772,7 +772,10 @@ export const useDeckelState = (emergencyOverride: boolean = false) => {
       // Add marker to transferred transactions
       const markedTxs = txsToTransfer.map((t) => ({
         ...t,
-        description: `Übertragen von ${source.name} — ${t.description}`,
+        // Behalte nur den Originalen Produktnamen für korrekte Aggregation in DailySalesOverview
+        description: t.description,
+        // Speichere von welchem Gast die Transaktion übertragen wurde
+        transferredFrom: source.name,
       }));
 
       performed = true;

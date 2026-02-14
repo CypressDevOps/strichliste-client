@@ -17,6 +17,8 @@ export interface Transaction {
   description: string;
   count: number;
   sum: number;
+  /** Optionales Feld: Zeigt von welchem Gast-Deckel die Transaktion übertragen wurde */
+  transferredFrom?: string;
 }
 
 export interface DeckelUIState {

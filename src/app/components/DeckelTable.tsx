@@ -86,6 +86,11 @@ export const DeckelTable: React.FC<DeckelTableProps> = ({
                       <td className='py-2 px-2 text-sm text-gray-300'>
                         <div className='flex items-center gap-2'>
                           <span>{t.description}</span>
+                          {t.transferredFrom && (
+                            <span className='text-xs text-gray-500 italic'>
+                              (von {t.transferredFrom})
+                            </span>
+                          )}
                           {t.count > 0 && t.count <= 5 && (
                             <img
                               src={`/images/strichliste-icons/strich-${t.count}.png`}
