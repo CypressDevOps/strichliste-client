@@ -19,8 +19,6 @@ import { ConfirmModal } from './ConfirmModal';
 import CashierModal from './CashierModal';
 import DeckeltransferModal from './DeckeltransferModal';
 
-import deckelBackground from '../assets/Deckelhintergrund.png';
-import paidDeckelBackground from '../assets/bezahlt-deckckel.png';
 import { useDeckelComputed } from './hooks/useDeckelComputed';
 import { useDeckelUIState } from './hooks/useDeckelUIState';
 import { useIsMobile } from './hooks/useIsMobile';
@@ -547,8 +545,8 @@ ${salesTransactions.map((tx) => `  - ${tx.description}: ${tx.sum.toFixed(2)}€`
           deckelList={deckelList}
           selectedDeckelId={selectedDeckelId}
           onSelect={handleDeckelClick}
-          deckelBackground={businessInfo.backgroundPath || deckelBackground}
-          paidDeckelBackground={paidDeckelBackground}
+          deckelBackground={businessInfo.backgroundPath || '/assets/Deckelhintergrund.png'}
+          paidDeckelBackground='/assets/bezahlt-deckckel.png'
           onStatusChange={handleStatusChange}
         />
 

@@ -120,13 +120,6 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  const handleResetDefaults = () => {
-    if (confirm('Produkte zurücksetzen?')) {
-      productService.resetToDefaults();
-      loadProducts();
-    }
-  };
-
   if (!isOpen) return null;
 
   return (
@@ -246,7 +239,9 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                           <span className='text-sm text-gray-300'>{product.category}</span>
                         </td>
                         <td className='px-4 py-3'>
-                          {product.icon ? (
+                          {product.emoji ? (
+                            <span className='text-2xl'>{product.emoji}</span>
+                          ) : product.icon ? (
                             <img src={product.icon} alt={product.name} className='w-8 h-8' />
                           ) : (
                             <span className='text-gray-500 text-xs'>-</span>
@@ -342,7 +337,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                     </select>
                   </div>
                   <div>
-                    <label className='block text-sm text-gray-300 mb-1'>Icon (optional)</label>
+                    <label className='block text-sm text-gray-300 mb-1'>Icon/Emoji (optional)</label>
                     <div className='flex items-center gap-3'>
                       {newForm.icon && (
                         <img src={newForm.icon} alt='Vorschau' className='w-12 h-12 rounded' />
@@ -385,16 +380,6 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Reset Button */}
-          <div className='border-t border-gray-700 pt-4'>
-            <button
-              onClick={handleResetDefaults}
-              className='bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded'
-            >
-              Auf Standard zurücksetzen (Stubbi, Helles)
-            </button>
           </div>
         </div>
       </div>
