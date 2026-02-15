@@ -35,7 +35,7 @@ const DroppableColumn: React.FC<{
   deckels?: DeckelUIState[];
 }> = ({ id, title, children, bgColor, deckels = [] }) => {
   const { setNodeRef } = useDroppable({ id });
-  
+
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   return (
@@ -50,19 +50,23 @@ const DroppableColumn: React.FC<{
     >
       <div className='flex items-center justify-between pl-4 pr-4 mb-3'>
         <h3 className='text-xl font-bold text-gray-200'>{title}</h3>
-        
+
         {deckels.length > 0 && (
           <div className='relative'>
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className='text-gray-300 hover:text-white text-sm bg-gray-700/50 hover:bg-gray-700 px-3 py-1 rounded-md flex items-center gap-2 transition'
             >
-              <span>{deckels.length} {deckels.length === 1 ? 'Deckel' : 'Deckel'}</span>
-              <span className={`transform transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}>
+              <span>
+                {deckels.length} {deckels.length === 1 ? 'Deckel' : 'Deckel'}
+              </span>
+              <span
+                className={`transform transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
+              >
                 ▼
               </span>
             </button>
-            
+
             {isDropdownOpen && (
               <div className='absolute right-0 mt-2 w-64 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50 max-h-80 overflow-y-auto'>
                 {deckels.map((deckel) => {
@@ -74,7 +78,9 @@ const DroppableColumn: React.FC<{
                     >
                       <div className='flex justify-between items-center'>
                         <span className='text-white font-medium'>{deckel.name}</span>
-                        <span className={`text-sm ${total < 0 ? 'text-red-400' : total > 0 ? 'text-green-400' : 'text-gray-400'}`}>
+                        <span
+                          className={`text-sm ${total < 0 ? 'text-red-400' : total > 0 ? 'text-green-400' : 'text-gray-400'}`}
+                        >
                           {total.toFixed(2).replace('.', ',')} €
                         </span>
                       </div>

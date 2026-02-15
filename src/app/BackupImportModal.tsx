@@ -37,9 +37,7 @@ export const BackupImportModal: React.FC<BackupImportModalProps> = ({ isOpen, on
         <h2 className='text-2xl font-bold mb-4'>Backup importieren</h2>
 
         <div className='mb-6'>
-          <p className='mb-3'>
-            Wähle eine Backup-Datei aus, um deine Daten wiederherzustellen.
-          </p>
+          <p className='mb-3'>Wähle eine Backup-Datei aus, um deine Daten wiederherzustellen.</p>
 
           <div className='bg-red-900/30 border border-red-600 rounded p-3 mb-4'>
             <p className='text-sm text-red-200'>
