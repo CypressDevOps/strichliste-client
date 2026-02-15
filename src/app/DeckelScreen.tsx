@@ -306,6 +306,7 @@ ${salesTransactions.map((tx) => `  - ${tx.description}: ${tx.sum.toFixed(2)}€`
     selectDeckel,
     deleteDeckel,
     addTransaction,
+    updateTransaction,
     removeTransaction,
     abendAbschliessen,
     isAbendGeschlossen,
@@ -369,6 +370,27 @@ ${salesTransactions.map((tx) => `  - ${tx.description}: ${tx.sum.toFixed(2)}€`
   } = useDeckelComputed(selectedDeckel, emergencyOverrideActive ? false : isAbendGeschlossen);
 
   const isMobile = useIsMobile();
+
+  const handleAdjustQuantity = (txId: string, delta: number) => {
+    if (!selectedDeckel) return;
+
+    const transaction = selectedDeckel.transactions?.find((t) => t.id === txId);
+    if (!transaction) return;
+
+    const newCount = transaction.count + delta;
+
+    // Verhindere, dass die Anzahl auf 0 oder negativ fällt
+    if (newCount <= 0) return;
+
+    // Berechne den einzelnen Betrag pro Stück
+    const unitSum = (transaction.sum ?? 0) / Math.abs(transaction.count || 1);
+
+    // Aktualisiere die Transaktion direkt
+    updateTransaction(selectedDeckel.id, txId, {
+      count: newCount,
+      sum: unitSum * newCount,
+    });
+  };
 
   if (isMobile) {
     return (
@@ -542,6 +564,7 @@ ${salesTransactions.map((tx) => `  - ${tx.description}: ${tx.sum.toFixed(2)}€`
                 selectedDeckel={selectedDeckel}
                 selectedTxId={selectedTxId}
                 setSelectedTxId={setSelectedTxId}
+                onAdjustQuantity={handleAdjustQuantity}
               />
 
               {!selectedCategory ? (

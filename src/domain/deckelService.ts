@@ -359,6 +359,28 @@ export const useDeckelState = (emergencyOverride: boolean = false) => {
     );
   };
 
+  const updateTransaction = (deckelId: string, txId: string, updates: Partial<Transaction>) => {
+    if (isAbendGeschlossen && !emergencyOverride) return;
+
+    const deckel = deckelList.find((d) => d.id === deckelId);
+    if (!deckel) return;
+    if (deckel.status === DECKEL_STATUS.BEZAHLT) return;
+
+    setDeckelList((prev) =>
+      prev.map((d) =>
+        d.id === deckelId
+          ? {
+              ...d,
+              transactions: (d.transactions ?? []).map((t) =>
+                t.id === txId ? { ...t, ...updates } : t
+              ),
+              lastActivity: new Date(),
+            }
+          : d
+      )
+    );
+  };
+
   const removeTransaction = (deckelId: string, txId: string) => {
     if (isAbendGeschlossen && !emergencyOverride) return;
 
@@ -819,6 +841,7 @@ export const useDeckelState = (emergencyOverride: boolean = false) => {
     selectDeckel,
     deleteDeckel,
     addTransaction,
+    updateTransaction,
     removeTransaction,
     removeTransactionFlexible,
     updateDeckelStatus,

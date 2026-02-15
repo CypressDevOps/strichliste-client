@@ -7,12 +7,34 @@ interface DeckelTableProps {
   selectedDeckel: DeckelUIState | null;
   selectedTxId: string | null;
   setSelectedTxId: React.Dispatch<React.SetStateAction<string | null>>;
+  onAdjustQuantity?: (txId: string, delta: number) => void;
 }
+
+/**
+ * Prüft, ob eine Transaktion ein Produkt ist und korrigiert werden darf
+ * Produkte sind:
+ * - Negative Transaktionen (Verkäufe)
+ * - NICHT "Rückgeld"
+ * - NICHT übertragen von einem anderen Deckel
+ */
+const isProductTransaction = (tx: Transaction): boolean => {
+  // Muss ein Verkauf sein (negative sum)
+  if (tx.sum >= 0) return false;
+
+  // Nicht Rückgeld
+  if (tx.description === 'Rückgeld') return false;
+
+  // Nicht übertragen von anderem Deckel
+  if (tx.transferredFrom) return false;
+
+  return true;
+};
 
 export const DeckelTable: React.FC<DeckelTableProps> = ({
   selectedDeckel,
   selectedTxId,
   setSelectedTxId,
+  onAdjustQuantity,
 }) => {
   if (!selectedDeckel) return null;
 
@@ -101,7 +123,38 @@ export const DeckelTable: React.FC<DeckelTableProps> = ({
                         </div>
                       </td>
 
-                      <td className='py-2 px-2 text-sm text-gray-300 text-right'>{t.count}</td>
+                      <td className='py-2 px-2 text-sm text-gray-300 text-right'>
+                        {isProductTransaction(t) ? (
+                          <div className='flex items-center justify-end gap-2'>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onAdjustQuantity?.(t.id ?? '', -1);
+                              }}
+                              disabled={t.count <= 1}
+                              className={`px-2 py-1 rounded text-white text-xs ${
+                                t.count <= 1
+                                  ? 'bg-gray-500 cursor-not-allowed'
+                                  : 'bg-red-600 hover:bg-red-700'
+                              }`}
+                            >
+                              −
+                            </button>
+                            <span className='w-6 text-center'>{t.count}</span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onAdjustQuantity?.(t.id ?? '', 1);
+                              }}
+                              className='px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-white text-xs'
+                            >
+                              +
+                            </button>
+                          </div>
+                        ) : (
+                          <span>{t.count}</span>
+                        )}
+                      </td>
 
                       <td className='py-2 px-2 text-sm text-gray-300 text-right'>
                         {t.sum < 0 ? (
