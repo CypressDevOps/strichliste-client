@@ -337,7 +337,9 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                     </select>
                   </div>
                   <div>
-                    <label className='block text-sm text-gray-300 mb-1'>Icon/Emoji (optional)</label>
+                    <label className='block text-sm text-gray-300 mb-1'>
+                      Icon/Emoji (optional)
+                    </label>
                     <div className='flex items-center gap-3'>
                       {newForm.icon && (
                         <img src={newForm.icon} alt='Vorschau' className='w-12 h-12 rounded' />
