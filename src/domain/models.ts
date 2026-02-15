@@ -44,7 +44,7 @@ export type ProductCategory =
   | 'Bier'
   | 'Alkoholfreie Getränke'
   | 'Schnaps'
-  | 'Sekt / Schaumwein'
+  | 'Apfelwein / Sekt / Schaumwein'
   | 'Snacks';
 
 export interface Product {

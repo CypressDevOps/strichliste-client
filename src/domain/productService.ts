@@ -70,15 +70,6 @@ const DEFAULT_PRODUCTS: Product[] = [
     isActive: true,
   },
   {
-    id: 'apfelsaftschorle',
-    name: 'Apfel-w.Sch. (0,3L)',
-    price: 1.5,
-    icon: '/icons/icon-apfelsaftschorle.png',
-    category: 'Alkoholfreie Getränke',
-    sortOrder: 8,
-    isActive: true,
-  },
-  {
     id: 'wasser',
     name: 'Wasser (0,5L)',
     price: 1.0,
@@ -87,14 +78,23 @@ const DEFAULT_PRODUCTS: Product[] = [
     sortOrder: 9,
     isActive: true,
   },
-  // Sekt / Schaumwein
+  // Apfelwein / Sekt / Schaumwein
+  {
+    id: 'apfelweinschorle',
+    name: 'Apfelwein Schorle (0,3L)',
+    price: 1.5,
+    icon: '/icons/icon-apfelweinschorle.png',
+    category: 'Apfelwein / Sekt / Schaumwein',
+    sortOrder: 8,
+    isActive: true,
+  },
   {
     id: 'piccolo',
     name: 'Piccolo (0,2L)',
     price: 2.5,
     icon: '',
     emoji: '🍾',
-    category: 'Sekt / Schaumwein',
+    category: 'Apfelwein / Sekt / Schaumwein',
     sortOrder: 10,
     isActive: true,
   },

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 
 import { useDeckelState } from '../domain/deckelService';
 import { productService } from '../domain/productService';
-import { Product, ProductCategory, GastBeleg } from '../domain/models';
+import { Product, ProductCategory } from '../domain/models';
 
 import { GuestList } from './components/GuestList';
 import { DeckelTable } from './components/DeckelTable';
@@ -33,8 +33,6 @@ import { BackupImportModal } from './BackupImportModal';
 import { MonthlyReportModal } from './MonthlyReportModal';
 import { BelegSelectModal } from './BelegSelectModal';
 import { BeerClickerGame } from './BeerClickerGame';
-import { ReceiptModal } from './ReceiptModal';
-import { generateReceipt } from '../domain/receiptGenerator';
 import { loadBusinessInfo } from '../domain/businessInfoService';
 import { GameMenu } from './GameMenu';
 import { Game2048 } from './Game2048';
@@ -82,12 +80,6 @@ export const DeckelScreen: React.FC = () => {
   const [isBeerGameOpen, setIsBeerGameOpen] = useState(false);
   const [is2048Open, setIs2048Open] = useState(false);
   const [isDeutschlandQuizOpen, setIsDeutschlandQuizOpen] = useState(false);
-
-  // Quittungs-Test States
-  const [isReceiptTestOpen, setIsReceiptTestOpen] = useState(false);
-  const [testReceipt, setTestReceipt] = useState<GastBeleg | null>(null);
-  const [debugModalOpen, setDebugModalOpen] = useState(false);
-  const [debugMessage, setDebugMessage] = useState('');
 
   // Für 5x Tap auf Titel
   const tapCountRef = useRef(0);
@@ -144,132 +136,8 @@ export const DeckelScreen: React.FC = () => {
   };
 
   /**
-   * Test-Funktion: Generiert eine Test-Quittung zum Testen der UI
+   * Auto-Restore beim App-Start
    */
-  const testReceiptGeneration = async () => {
-    try {
-      if (!selectedDeckel) {
-        setDebugMessage('Bitte wählen Sie einen Gast aus, um die Quittung zu erstellen');
-        setDebugModalOpen(true);
-        return;
-      }
-
-      // Quittung kann nur erstellt werden, wenn der Gast bereits bezahlt hat
-      if (selectedDeckel.status !== DECKEL_STATUS.BEZAHLT) {
-        setDebugMessage(
-          `Quittung kann nur erstellt werden, wenn der Gast bezahlt hat.\nAktueller Status: ${selectedDeckel.status}`
-        );
-        setDebugModalOpen(true);
-        return;
-      }
-
-      // Nur negative Transaktionen (Verkäufe/Schulden) summieren, nicht die Bezahlungen
-      const transactions = selectedDeckel.transactions || [];
-      const salesTransactions = transactions.filter((tx) => tx.sum < 0);
-
-      if (salesTransactions.length === 0) {
-        setDebugMessage('Gast hat keine Verkäufe - Quittung kann nicht erstellt werden');
-        setDebugModalOpen(true);
-        return;
-      }
-
-      // Erstelle Tax-Rate-Map basierend auf Produktkategorie
-      // Snacks = 7%, alles andere = 19%
-      const taxRateMap = new Map<string, number>();
-      for (const product of products) {
-        const taxRate = product.category === 'Snacks' ? 7 : 19;
-        taxRateMap.set(product.name, taxRate);
-      }
-
-      // tx.sum sind bereits BRUTTO-Preise (was der Gast sieht & bezahlt!)
-      const totalGrossToPay = Math.abs(salesTransactions.reduce((sum, tx) => sum + tx.sum, 0));
-
-      // Aufrunden auf nächste 0,50€ für Rückgeld
-      const amountReceived = Math.ceil(totalGrossToPay * 2) / 2;
-
-      // Debug: Info über Transaktionen anzeigen
-      const debugInfo = `
-DEBUG INFO:
-- Gast: ${selectedDeckel.name}
-- Status: ${selectedDeckel.status}
-- Alle Transaktionen: ${transactions.length}
-- Nur Verkäufe (negativ): ${salesTransactions.length}
-- Gesamtsumme (BRUTTO): ${totalGrossToPay.toFixed(2)}€
-- Zahlbetrag (aufgerundet): ${amountReceived.toFixed(2)}€
-
-Steuersätze:
-${Array.from(taxRateMap.entries())
-  .map(([name, rate]) => `  - ${name}: ${rate}%`)
-  .join('\n')}
-
-Transaktionen (Brutto-Preise):
-${salesTransactions.map((tx) => `  - ${tx.description}: ${tx.sum.toFixed(2)}€`).join('\n')}
-      `.trim();
-
-      console.log(debugInfo);
-
-      // Finde Rückgeld- und Trinkgeld-Transaktionen
-      const changeTransaction = (selectedDeckel?.transactions || []).find(
-        (tx) => tx.description === 'Rückgeld'
-      );
-      const tipTransaction = (selectedDeckel?.transactions || []).find(
-        (tx) => tx.isTip === true || tx.description === 'Trinkgeld'
-      );
-
-      const changeGiven = Math.abs(changeTransaction?.sum ?? 0); // Rückgeld ist negativ
-      let tip: number | undefined = Math.abs(tipTransaction?.sum ?? 0); // Trinkgeld ist negativ
-      if (tip === 0) tip = undefined;
-
-      // Berechne amountReceived: totalGross + changeGiven + (tip || 0)
-      const amountReceivedCalculated = totalGrossToPay + changeGiven + (tip || 0);
-
-      // Debug
-      console.log('DeckelScreen - Payment Details:', {
-        totalGrossToPay: totalGrossToPay,
-        changeGiven: changeGiven,
-        tip: tip,
-        amountReceived: amountReceivedCalculated,
-      });
-
-      const receipt = await generateReceipt({
-        business: loadBusinessInfo(), // Lade aus localStorage
-        transactions: salesTransactions, // Nur Verkäufe an die Quittung
-        paymentMethod: 'CASH',
-        paymentDetails: { amountReceived: amountReceivedCalculated, changeGiven, tip },
-        guestName: selectedDeckel.name,
-        tableNumber: selectedDeckel.id,
-        taxRateMap, // Übergebe das Steuersatz-Mapping
-      });
-      setTestReceipt(receipt);
-      setIsReceiptTestOpen(true);
-    } catch (error) {
-      const salesTransactions = (selectedDeckel?.transactions || []).filter((tx) => tx.sum < 0);
-      const totalGrossToPay = Math.abs(salesTransactions.reduce((sum, tx) => sum + tx.sum, 0));
-      const amountReceived = Math.ceil(totalGrossToPay * 2) / 2;
-
-      const errorMsg = error instanceof Error ? error.message : 'Unbekannter Fehler';
-      const detailedError = `
-FEHLER beim Erstellen der Quittung:
-${errorMsg}
-
-DEBUG INFO:
-- Gast: ${selectedDeckel?.name}
-- Status: ${selectedDeckel?.status}
-- Anzahl Verkäufe: ${salesTransactions.length}
-- Gesamtsumme (BRUTTO): ${totalGrossToPay.toFixed(2)}€
-- Zahlbetrag: ${amountReceived.toFixed(2)}€
-
-Transaktionen (Brutto-Preise):
-${salesTransactions.map((tx) => `  - ${tx.description}: ${tx.sum.toFixed(2)}€`).join('\n')}
-      `.trim();
-
-      console.error(detailedError);
-      setDebugMessage(detailedError);
-      setDebugModalOpen(true);
-    }
-  };
-
-  // Auto-Restore beim App-Start
   useEffect(() => {
     if (shouldRestoreFromBackup()) {
       setIsRestoring(true);
@@ -596,30 +464,33 @@ ${salesTransactions.map((tx) => `  - ${tx.description}: ${tx.sum.toFixed(2)}€`
                 isReadOnly={isReadOnly}
               />
 
-              {!selectedCategory ? (
-                <CategorySelector onSelectCategory={(category) => setSelectedCategory(category)} />
-              ) : (
-                <ProductGrid
-                  products={products.filter((p) => p.category === selectedCategory)}
-                  category={selectedCategory}
-                  onBack={() => setSelectedCategory(null)}
-                  onAddProduct={(product, count) => {
-                    if (!isReadOnly && !isAddingProductTransaction) {
-                      setIsAddingProductTransaction(true);
-                      try {
-                        addTransaction(selectedDeckel.id, {
-                          date: new Date(),
-                          description: product.name,
-                          count,
-                          sum: -(count * product.price),
-                        });
-                      } finally {
-                        setTimeout(() => setIsAddingProductTransaction(false), 300);
+              {!isReadOnly &&
+                (!selectedCategory ? (
+                  <CategorySelector
+                    onSelectCategory={(category) => setSelectedCategory(category)}
+                  />
+                ) : (
+                  <ProductGrid
+                    products={products.filter((p) => p.category === selectedCategory)}
+                    category={selectedCategory}
+                    onBack={() => setSelectedCategory(null)}
+                    onAddProduct={(product, count) => {
+                      if (!isAddingProductTransaction) {
+                        setIsAddingProductTransaction(true);
+                        try {
+                          addTransaction(selectedDeckel.id, {
+                            date: new Date(),
+                            description: product.name,
+                            count,
+                            sum: -(count * product.price),
+                          });
+                        } finally {
+                          setTimeout(() => setIsAddingProductTransaction(false), 300);
+                        }
                       }
-                    }
-                  }}
-                />
-              )}
+                    }}
+                  />
+                ))}
             </>
           ) : deckelList.length > 0 ? (
             <DailySalesOverview deckelList={deckelList} />
@@ -977,19 +848,6 @@ ${salesTransactions.map((tx) => `  - ${tx.description}: ${tx.sum.toFixed(2)}€`
               </button>
               <button
                 onClick={() => {
-                  testReceiptGeneration();
-                  setIsTechMenuOpen(false);
-                }}
-                className='w-full text-left px-4 py-3 text-white hover:bg-gray-700 rounded transition flex items-center gap-3'
-              >
-                <span className='text-2xl'>🧾</span>
-                <div>
-                  <div className='font-semibold'>Quittung erstellen</div>
-                  <div className='text-sm text-gray-400'>Nach Zahlung Gastbeleg generieren</div>
-                </div>
-              </button>
-              <button
-                onClick={() => {
                   setIsEmergencyOverrideOpen(true);
                   setIsTechMenuOpen(false);
                 }}
@@ -1045,44 +903,6 @@ ${salesTransactions.map((tx) => `  - ${tx.description}: ${tx.sum.toFixed(2)}€`
         isOpen={isDeutschlandQuizOpen}
         onClose={() => setIsDeutschlandQuizOpen(false)}
       />
-
-      {/* Test Receipt Modal */}
-      <ReceiptModal
-        isOpen={isReceiptTestOpen}
-        receipt={testReceipt}
-        onClose={() => setIsReceiptTestOpen(false)}
-      />
-
-      {/* Debug Modal - Kopierbare Error/Info Meldungen */}
-      {debugModalOpen && (
-        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
-          <div className='bg-gray-800 rounded-lg p-6 max-w-2xl w-full max-h-96 overflow-auto border border-gray-600'>
-            <h2 className='text-xl font-bold text-white mb-4'>Debug Information</h2>
-            <textarea
-              readOnly
-              value={debugMessage}
-              className='w-full h-48 bg-gray-900 text-gray-100 p-4 rounded font-mono text-sm border border-gray-600 focus:outline-none'
-            />
-            <div className='flex gap-3 mt-4'>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(debugMessage);
-                  alert('In die Zwischenablage kopiert!');
-                }}
-                className='flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded transition'
-              >
-                📋 Kopieren
-              </button>
-              <button
-                onClick={() => setDebugModalOpen(false)}
-                className='flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded transition'
-              >
-                Schließen
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -9,7 +9,7 @@ interface CategorySelectorProps {
 const CATEGORIES: { name: ProductCategory; icon: string; emoji?: string }[] = [
   { name: 'Bier', icon: '/icons/icon-helles.png' },
   { name: 'Schnaps', icon: '/icons/icon-schnapps-glas.png' },
-  { name: 'Sekt / Schaumwein', icon: '', emoji: '🍾🥂' },
+  { name: 'Apfelwein / Sekt / Schaumwein', icon: '', emoji: '🍾🥂' },
   { name: 'Alkoholfreie Getränke', icon: '', emoji: '🥤' },
   { name: 'Snacks', icon: '', emoji: '🥨' },
 ];
