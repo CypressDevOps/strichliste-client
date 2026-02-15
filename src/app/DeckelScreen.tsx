@@ -390,6 +390,11 @@ ${salesTransactions.map((tx) => `  - ${tx.description}: ${tx.sum.toFixed(2)}€`
     });
   };
 
+  const handleDeleteTransaction = (txId: string) => {
+    if (!selectedDeckel) return;
+    removeTransaction(selectedDeckel.id, txId);
+  };
+
   if (isMobile) {
     return (
       <div className='flex items-center justify-center h-screen text-gray-200 text-white text-center p-6'>
@@ -548,6 +553,7 @@ ${salesTransactions.map((tx) => `  - ${tx.description}: ${tx.sum.toFixed(2)}€`
           deckelBackground={businessInfo.backgroundPath || '/assets/Deckelhintergrund.png'}
           paidDeckelBackground='/assets/bezahlt-deckckel.png'
           onStatusChange={handleStatusChange}
+          onDeleteDeckel={openDeleteConfirm}
         />
 
         <div className='hidden lg:block w-px bg-gray-300' />
@@ -563,6 +569,7 @@ ${salesTransactions.map((tx) => `  - ${tx.description}: ${tx.sum.toFixed(2)}€`
                 selectedTxId={selectedTxId}
                 setSelectedTxId={setSelectedTxId}
                 onAdjustQuantity={handleAdjustQuantity}
+                onDeleteTransaction={handleDeleteTransaction}
               />
 
               {!selectedCategory ? (

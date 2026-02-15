@@ -340,11 +340,6 @@ export async function exportReceiptToPDF(
   doc.text(footerText, pageWidth / 2, yPosition, { align: 'center' });
   yPosition += 6;
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.text('Bitte kommen Sie bald wieder!', pageWidth / 2, yPosition, { align: 'center' });
-  yPosition += 6;
-
   // === Manipulationsschutz Hash ===
   doc.setFontSize(7);
   doc.setTextColor(150);

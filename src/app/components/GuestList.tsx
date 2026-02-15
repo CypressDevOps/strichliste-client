@@ -22,6 +22,7 @@ interface GuestListProps {
   deckelBackground: string;
   paidDeckelBackground: string;
   onStatusChange?: (id: string, status: DeckelStatus) => void;
+  onDeleteDeckel?: (id: string) => void;
 }
 
 /**
@@ -33,7 +34,19 @@ const DroppableColumn: React.FC<{
   children: React.ReactNode;
   bgColor?: string;
   deckels?: DeckelUIState[];
-}> = ({ id, title, children, bgColor, deckels = [] }) => {
+  pinnedDeckelIds?: Set<string>;
+  onPinDeckel?: (id: string) => void;
+  onDeleteDeckel?: (id: string) => void;
+}> = ({
+  id,
+  title,
+  children,
+  bgColor,
+  deckels = [],
+  pinnedDeckelIds = new Set(),
+  onPinDeckel,
+  onDeleteDeckel,
+}) => {
   const { setNodeRef } = useDroppable({ id });
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -71,18 +84,43 @@ const DroppableColumn: React.FC<{
               <div className='absolute right-0 mt-2 w-64 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50 max-h-80 overflow-y-auto'>
                 {deckels.map((deckel) => {
                   const total = deckel.transactions?.reduce((acc, t) => acc + (t.sum ?? 0), 0) ?? 0;
+                  const isPinned = pinnedDeckelIds.has(deckel.id);
                   return (
                     <div
                       key={deckel.id}
-                      className='px-4 py-2 hover:bg-gray-700 border-b border-gray-700/50 last:border-b-0'
+                      className='px-4 py-2 hover:bg-gray-700 border-b border-gray-700/50 last:border-b-0 transition'
+                      style={{
+                        backgroundColor: isPinned ? 'rgba(59, 130, 246, 0.3)' : 'transparent',
+                      }}
                     >
                       <div className='flex justify-between items-center'>
-                        <span className='text-white font-medium'>{deckel.name}</span>
-                        <span
-                          className={`text-sm ${total < 0 ? 'text-red-400' : total > 0 ? 'text-green-400' : 'text-gray-400'}`}
+                        <div
+                          onClick={() => {
+                            onPinDeckel?.(deckel.id);
+                            setIsDropdownOpen(false);
+                          }}
+                          className='flex items-center gap-2 cursor-pointer flex-1'
                         >
-                          {total.toFixed(2).replace('.', ',')} €
-                        </span>
+                          {isPinned && <span className='text-blue-400 text-lg'>📌</span>}
+                          <span className='text-white font-medium'>{deckel.name}</span>
+                        </div>
+                        <div className='flex items-center gap-2'>
+                          <span
+                            className={`text-sm ${total < 0 ? 'text-red-400' : total > 0 ? 'text-green-400' : 'text-gray-400'}`}
+                          >
+                            {total.toFixed(2).replace('.', ',')} €
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteDeckel?.(deckel.id);
+                            }}
+                            className='text-red-400 hover:text-red-300 hover:bg-red-900/30 p-1 rounded transition'
+                            title='Deckel löschen'
+                          >
+                            🗑️
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -103,7 +141,17 @@ const DraggableGuest: React.FC<{
   deckelBackground: string;
   paidDeckelBackground: string;
   onSelect: (id: string) => void;
-}> = ({ deckel, isSelected, deckelBackground, paidDeckelBackground, onSelect }) => {
+  isPinned?: boolean;
+  onPin?: (id: string) => void;
+}> = ({
+  deckel,
+  isSelected,
+  deckelBackground,
+  paidDeckelBackground,
+  onSelect,
+  isPinned = false,
+  onPin,
+}) => {
   const isDraggable = deckel.status !== DECKEL_STATUS.BEZAHLT;
 
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
@@ -125,7 +173,21 @@ const DraggableGuest: React.FC<{
       aria-pressed={isSelected}
     >
       <div className='pl-4 w-fit'>
-        <span className='mb-2 text-yellow-300 text-xl font-semibold block'>{deckel.name}</span>
+        <div className='flex items-center gap-2 mb-2'>
+          <span className='text-yellow-300 text-xl font-semibold'>{deckel.name}</span>
+          {isPinned && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onPin?.(deckel.id);
+              }}
+              className='text-blue-400 hover:text-blue-300 text-lg transition'
+              title='Gepinnt - Klick zum Entpinnen'
+            >
+              📌
+            </button>
+          )}
+        </div>
 
         <div
           className='relative w-[120px] h-[120px] md:w-[150px] md:h-[150px] rounded-lg overflow-hidden flex-shrink-0 transition'
@@ -136,6 +198,7 @@ const DraggableGuest: React.FC<{
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',
+            border: isPinned ? '3px solid rgb(96, 165, 250)' : 'none',
           }}
         >
           {isDimmed && (
@@ -171,8 +234,10 @@ export const GuestList: React.FC<GuestListProps> = ({
   deckelBackground,
   paidDeckelBackground,
   onStatusChange,
+  onDeleteDeckel,
 }) => {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [pinnedDeckelIds, setPinnedDeckelIds] = useState<Set<string>>(new Set());
 
   const offen = deckelList.filter((d) => d.status === DECKEL_STATUS.OFFEN);
   const gone = deckelList.filter((d) => d.status === DECKEL_STATUS.GONE);
@@ -188,20 +253,43 @@ export const GuestList: React.FC<GuestListProps> = ({
     })
   );
 
-  const renderList = (list: DeckelUIState[]) => (
-    <ul className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-      {list.map((deckel) => (
-        <DraggableGuest
-          key={deckel.id}
-          deckel={deckel}
-          isSelected={selectedDeckelId === deckel.id}
-          deckelBackground={deckelBackground}
-          paidDeckelBackground={paidDeckelBackground}
-          onSelect={onSelect}
-        />
-      ))}
-    </ul>
-  );
+  const handlePinDeckel = (id: string) => {
+    setPinnedDeckelIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const renderList = (list: DeckelUIState[]) => {
+    // Trenne gepinnte und ungepinnte Deckels
+    const pinned = list.filter((d) => pinnedDeckelIds.has(d.id));
+    const unpinned = list.filter((d) => !pinnedDeckelIds.has(d.id));
+
+    // Gepinnte zuerst, dann ungepinnte
+    const sortedList = [...pinned, ...unpinned];
+
+    return (
+      <ul className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+        {sortedList.map((deckel) => (
+          <DraggableGuest
+            key={deckel.id}
+            deckel={deckel}
+            isSelected={selectedDeckelId === deckel.id}
+            deckelBackground={deckelBackground}
+            paidDeckelBackground={paidDeckelBackground}
+            onSelect={onSelect}
+            isPinned={pinnedDeckelIds.has(deckel.id)}
+            onPin={handlePinDeckel}
+          />
+        ))}
+      </ul>
+    );
+  };
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(String(event.active.id));
@@ -289,6 +377,9 @@ export const GuestList: React.FC<GuestListProps> = ({
             title='Gast ist da'
             bgColor={columnColors[DECKEL_STATUS.OFFEN]}
             deckels={offen}
+            pinnedDeckelIds={pinnedDeckelIds}
+            onPinDeckel={handlePinDeckel}
+            onDeleteDeckel={onDeleteDeckel}
           >
             {renderList(offen)}
           </DroppableColumn>
@@ -298,6 +389,9 @@ export const GuestList: React.FC<GuestListProps> = ({
             title='Gast ist gegangen'
             bgColor={columnColors[DECKEL_STATUS.GONE]}
             deckels={gone}
+            pinnedDeckelIds={pinnedDeckelIds}
+            onPinDeckel={handlePinDeckel}
+            onDeleteDeckel={onDeleteDeckel}
           >
             {renderList(gone)}
           </DroppableColumn>
@@ -307,6 +401,9 @@ export const GuestList: React.FC<GuestListProps> = ({
             title='Gast hat bezahlt'
             bgColor={columnColors[DECKEL_STATUS.BEZAHLT]}
             deckels={bezahlt}
+            pinnedDeckelIds={pinnedDeckelIds}
+            onPinDeckel={handlePinDeckel}
+            onDeleteDeckel={onDeleteDeckel}
           >
             {renderList(bezahlt)}
           </DroppableColumn>

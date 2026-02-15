@@ -8,6 +8,7 @@ interface DeckelTableProps {
   selectedTxId: string | null;
   setSelectedTxId: React.Dispatch<React.SetStateAction<string | null>>;
   onAdjustQuantity?: (txId: string, delta: number) => void;
+  onDeleteTransaction?: (txId: string) => void;
 }
 
 /**
@@ -35,6 +36,7 @@ export const DeckelTable: React.FC<DeckelTableProps> = ({
   selectedTxId,
   setSelectedTxId,
   onAdjustQuantity,
+  onDeleteTransaction,
 }) => {
   if (!selectedDeckel) return null;
 
@@ -125,7 +127,7 @@ export const DeckelTable: React.FC<DeckelTableProps> = ({
 
                       <td className='py-2 px-2 text-sm text-gray-300 text-right'>
                         {isProductTransaction(t) ? (
-                          <div className='flex items-center justify-end gap-2'>
+                          <div className='flex items-center justify-end gap-1'>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -149,6 +151,16 @@ export const DeckelTable: React.FC<DeckelTableProps> = ({
                               className='px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-white text-xs'
                             >
                               +
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteTransaction?.(t.id ?? '');
+                              }}
+                              className='px-2 py-1 bg-red-800 hover:bg-red-700 rounded text-white text-xs ml-1'
+                              title='Eintrag löschen'
+                            >
+                              🗑️
                             </button>
                           </div>
                         ) : (
