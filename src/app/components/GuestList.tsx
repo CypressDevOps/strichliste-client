@@ -32,8 +32,11 @@ const DroppableColumn: React.FC<{
   title: string;
   children: React.ReactNode;
   bgColor?: string;
-}> = ({ id, title, children, bgColor }) => {
+  deckels?: DeckelUIState[];
+}> = ({ id, title, children, bgColor, deckels = [] }) => {
   const { setNodeRef } = useDroppable({ id });
+  
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   return (
     <div
@@ -45,7 +48,44 @@ const DroppableColumn: React.FC<{
         paddingBottom: '0.75rem',
       }}
     >
-      <h3 className='text-xl font-bold text-gray-200 pl-4 mb-3'>{title}</h3>
+      <div className='flex items-center justify-between pl-4 pr-4 mb-3'>
+        <h3 className='text-xl font-bold text-gray-200'>{title}</h3>
+        
+        {deckels.length > 0 && (
+          <div className='relative'>
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className='text-gray-300 hover:text-white text-sm bg-gray-700/50 hover:bg-gray-700 px-3 py-1 rounded-md flex items-center gap-2 transition'
+            >
+              <span>{deckels.length} {deckels.length === 1 ? 'Deckel' : 'Deckel'}</span>
+              <span className={`transform transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}>
+                ▼
+              </span>
+            </button>
+            
+            {isDropdownOpen && (
+              <div className='absolute right-0 mt-2 w-64 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50 max-h-80 overflow-y-auto'>
+                {deckels.map((deckel) => {
+                  const total = deckel.transactions?.reduce((acc, t) => acc + (t.sum ?? 0), 0) ?? 0;
+                  return (
+                    <div
+                      key={deckel.id}
+                      className='px-4 py-2 hover:bg-gray-700 border-b border-gray-700/50 last:border-b-0'
+                    >
+                      <div className='flex justify-between items-center'>
+                        <span className='text-white font-medium'>{deckel.name}</span>
+                        <span className={`text-sm ${total < 0 ? 'text-red-400' : total > 0 ? 'text-green-400' : 'text-gray-400'}`}>
+                          {total.toFixed(2).replace('.', ',')} €
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
       {children}
     </div>
   );
@@ -242,6 +282,7 @@ export const GuestList: React.FC<GuestListProps> = ({
             id={DECKEL_STATUS.OFFEN}
             title='Gast ist da'
             bgColor={columnColors[DECKEL_STATUS.OFFEN]}
+            deckels={offen}
           >
             {renderList(offen)}
           </DroppableColumn>
@@ -250,6 +291,7 @@ export const GuestList: React.FC<GuestListProps> = ({
             id={DECKEL_STATUS.GONE}
             title='Gast ist gegangen'
             bgColor={columnColors[DECKEL_STATUS.GONE]}
+            deckels={gone}
           >
             {renderList(gone)}
           </DroppableColumn>
@@ -258,6 +300,7 @@ export const GuestList: React.FC<GuestListProps> = ({
             id={DECKEL_STATUS.BEZAHLT}
             title='Gast hat bezahlt'
             bgColor={columnColors[DECKEL_STATUS.BEZAHLT]}
+            deckels={bezahlt}
           >
             {renderList(bezahlt)}
           </DroppableColumn>
