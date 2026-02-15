@@ -23,7 +23,13 @@ export const DailySalesOverview: React.FC<DailySalesOverviewProps> = ({ deckelLi
       .forEach((deckel) => {
         deckel.transactions?.forEach((tx) => {
           // Nur negative Summen sind Produktverkäufe (positive sind Zahlungen)
-          if (tx.sum < 0 && tx.description !== 'Korrektur') {
+          // Ausschluss: Rückgeld und Trinkgeld
+          if (
+            tx.sum < 0 &&
+            tx.description !== 'Korrektur' &&
+            tx.description !== 'Rückgeld' &&
+            !tx.isTip
+          ) {
             const productName = tx.description;
             const count = tx.count || 1;
             const price = Math.abs(tx.sum);

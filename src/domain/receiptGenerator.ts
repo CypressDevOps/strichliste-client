@@ -61,6 +61,11 @@ function generateReceiptNumber(): string {
  * WICHTIG: tx.sum enthält BRUTTO-Preise (was der Gast sieht),
  * diese werden in Netto + Steuern aufgeteilt
  *
+ * Ausgeschlossen werden:
+ * - Zahlungstransaktionen (tx.sum >= 0)
+ * - Rückgeld-Transaktionen (description === 'Rückgeld')
+ * - Trinkgeld-Transaktionen (isTip === true)
+ *
  * @param transactions Transaktionen vom Deckel (mit .sum < 0 für Verkäufe)
  * @param taxRateMap Mapping von Produktname zu Steuersatz (optional)
  */
@@ -74,6 +79,9 @@ function transactionsToLineItems(
   for (const tx of transactions) {
     // Nur negative Transaktionen sind Verkäufe
     if (tx.sum >= 0) continue;
+
+    // Ausschließen: Rückgeld und Trinkgeld
+    if (tx.description === 'Rückgeld' || tx.isTip) continue;
 
     const amountGross = Math.abs(tx.sum); // tx.sum ist BRUTTO!
     const quantity = Math.abs(tx.count || 1);
@@ -187,14 +195,18 @@ export async function generateReceipt(params: GenerateReceiptParams): Promise<Ga
   let paymentDetails: PaymentDetails;
 
   if (params.paymentMethod === 'CASH') {
-    const cashPayment = params.paymentDetails as { amountReceived?: number } | undefined;
+    const cashPayment = params.paymentDetails as
+      | { amountReceived?: number; changeGiven?: number; tip?: number }
+      | undefined;
     const amountReceived = cashPayment?.amountReceived ?? totalGross;
-    const changeGiven = roundToCent(amountReceived - totalGross);
+    const changeGiven = cashPayment?.changeGiven ?? roundToCent(amountReceived - totalGross);
+    const tip = cashPayment?.tip;
 
     paymentDetails = {
       method: 'CASH',
       amountReceived,
       changeGiven,
+      ...(tip && tip > 0 && { tip }),
     };
   } else if (params.paymentMethod === 'CARD') {
     const cardPayment = params.paymentDetails as { cardLast4?: string } | undefined;

@@ -50,10 +50,10 @@ export const BelegSelectModal: React.FC<BelegSelectModalProps> = ({
         return;
       }
 
-      // Nur Verkäufe (negative Transaktionen, ohne Rückgeld)
+      // Nur Verkäufe (negative Transaktionen, ohne Rückgeld und ohne Trinkgeld)
       const transactions = deckel.transactions || [];
       const salesTransactions = transactions.filter(
-        (tx) => tx.sum < 0 && tx.description !== 'Rückgeld'
+        (tx) => tx.sum < 0 && tx.description !== 'Rückgeld' && !tx.isTip
       );
 
       if (salesTransactions.length === 0) {
@@ -71,37 +71,35 @@ export const BelegSelectModal: React.FC<BelegSelectModalProps> = ({
       // Berechne Gesamtsumme (BRUTTO)
       const totalGrossToPay = Math.abs(salesTransactions.reduce((sum, tx) => sum + tx.sum, 0));
 
-      // Alle positiven Transaktionen (Einzahlung + Zahlung) filtern
-      const allPaymentTransactions = transactions.filter((tx) => (tx.sum ?? 0) > 0);
-      const totalPaidAmount = allPaymentTransactions.reduce((sum, tx) => sum + (tx.sum ?? 0), 0);
-
-      let amountReceived: number;
-
-      // Wenn zahlungen mit Rückgeld-Info vorhanden sind, nutze den Gesamtbetrag
-      const paymentWithDetails = allPaymentTransactions.find(
-        (tx) => tx.amountReceived && tx.changeGiven !== undefined
+      // Finde Rückgeld- und Trinkgeld-Transaktionen
+      const changeTransaction = transactions.find((tx) => tx.description === 'Rückgeld');
+      const tipTransaction = transactions.find(
+        (tx) => tx.isTip === true || tx.description === 'Trinkgeld'
       );
 
-      if (paymentWithDetails?.amountReceived && paymentWithDetails?.changeGiven !== undefined) {
-        // Bei nur einer Payment-TX mit Details: nutze diese
-        // Bei mehreren: summiere alle positiven Transaktionen
-        if (allPaymentTransactions.length === 1) {
-          amountReceived = paymentWithDetails.amountReceived;
-        } else {
-          // Mehrere Zahlungen/Einzahlungen - nutze Gesamtsumme
-          amountReceived = totalPaidAmount;
-        }
-      } else {
-        // Fallback: Aufrunden auf nächste 0,50€
-        amountReceived = Math.ceil(totalGrossToPay * 2) / 2;
-      }
+      let changeGiven: number = Math.abs(changeTransaction?.sum ?? 0); // Rückgeld ist negativ
+      let tip: number | undefined = Math.abs(tipTransaction?.sum ?? 0); // Trinkgeld ist negativ
+
+      // Wenn tip 0 ist, setze auf undefined
+      if (tip === 0) tip = undefined;
+
+      // Berechne amountReceived: totalGross + changeGiven + (tip || 0)
+      const amountReceived = totalGrossToPay + changeGiven + (tip || 0);
+
+      // Debug
+      console.log('BelegSelectModal handleGenerateBeleg - Payment Details:', {
+        totalGrossToPay: totalGrossToPay,
+        changeGiven: changeGiven,
+        tip: tip,
+        amountReceived: amountReceived,
+      });
 
       // Generiere Receipt mit neuer Logik
       const receipt = await generateReceipt({
         business: loadBusinessInfo(),
         transactions: salesTransactions,
         paymentMethod: 'CASH',
-        paymentDetails: { amountReceived },
+        paymentDetails: { amountReceived, changeGiven, tip },
         guestName: deckel.name,
         tableNumber: deckel.id,
         taxRateMap,
@@ -174,7 +172,30 @@ export const BelegSelectModal: React.FC<BelegSelectModalProps> = ({
       const allPaymentTransactions = transactions.filter((tx) => (tx.sum ?? 0) > 0);
       const totalPaidAmount = allPaymentTransactions.reduce((sum, tx) => sum + (tx.sum ?? 0), 0);
 
+      // Finde Rückgeld- und Trinkgeld-Transaktionen für die Quittung
+      const changeTransaction = transactions.find((tx) => tx.description === 'Rückgeld');
+      const tipTransaction = transactions.find(
+        (tx) => tx.isTip === true || tx.description === 'Trinkgeld'
+      );
+
       let amountReceived: number;
+      let changeGiven: number = Math.abs(changeTransaction?.sum ?? 0); // Rückgeld ist negativ
+      let tip: number | undefined = Math.abs(tipTransaction?.sum ?? 0); // Trinkgeld ist negativ
+
+      // Debug
+      console.log('BelegSelectModal - Payment Details:', {
+        'changeTransaction found': !!changeTransaction,
+        'changeTransaction sum': changeTransaction?.sum,
+        changeGiven: changeGiven,
+        'tipTransaction found': !!tipTransaction,
+        'tipTransaction sum': tipTransaction?.sum,
+        'tipTransaction isTip': tipTransaction?.isTip,
+        'tipTransaction description': tipTransaction?.description,
+        'tip calculated': tip,
+      });
+
+      // Wenn tip 0 ist, setze auf undefined
+      if (tip === 0) tip = undefined;
 
       // Wenn zahlungen mit Rückgeld-Info vorhanden sind, nutze den Gesamtbetrag
       const paymentWithDetails = allPaymentTransactions.find(
@@ -200,7 +221,7 @@ export const BelegSelectModal: React.FC<BelegSelectModalProps> = ({
         business: loadBusinessInfo(),
         transactions: salesTransactions,
         paymentMethod: 'CASH',
-        paymentDetails: { amountReceived },
+        paymentDetails: { amountReceived, changeGiven, tip },
         guestName: deckel.name,
         tableNumber: deckel.id,
         taxRateMap,

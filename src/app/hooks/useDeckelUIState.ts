@@ -301,7 +301,7 @@ export const useDeckelUIState = ({
     amount: number,
     deckelId?: string,
     moveToGone?: boolean,
-    paymentDetails?: { amountReceived: number; changeGiven: number }
+    paymentDetails?: { amountReceived: number; changeGiven: number; tip?: number }
   ) => {
     const targetDeckelId = deckelId ?? selectedDeckelId;
     if (!targetDeckelId) return;
@@ -339,6 +339,19 @@ export const useDeckelUIState = ({
         sum: -paymentDetails.changeGiven,
       };
       addTransaction(targetDeckelId, changeTx);
+    }
+
+    // Wenn Trinkgeld gegeben wurde, füge einen Trinkgeld-Eintrag hinzu
+    // Trinkgeld wird als negative Transaktion aufgezeichnet, da es Teil der Überzahlung ist
+    if (paymentDetails && paymentDetails.tip && paymentDetails.tip > 0) {
+      const tipTx: Transaction = {
+        date: new Date(),
+        description: `Trinkgeld`,
+        count: 1,
+        sum: -paymentDetails.tip,
+        isTip: true,
+      };
+      addTransaction(targetDeckelId, tipTx);
     }
 
     if (newSum === 0 || paymentDetails) {

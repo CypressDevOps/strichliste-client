@@ -4,8 +4,8 @@ import { BusinessData } from './models';
 const STORAGE_KEY = 'business_info';
 
 const DEFAULT_BUSINESS_INFO: BusinessData = {
-  businessName: 'Kostas Beleg',
-  address: 'Hauptstraße 45\n12345 Teststadt',
+  businessName: 'Schützenverein Lindschied e.V.',
+  address: 'Hauptstraße 19\n65307 Bad Schwalbach',
   taxNumber: '12 345 678 901',
   vatId: 'DE123456789',
   logoPath: '/images/logo.png',

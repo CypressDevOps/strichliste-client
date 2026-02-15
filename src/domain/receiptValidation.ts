@@ -287,11 +287,17 @@ function validatePayment(errors: ValidationError[], receipt: GastBeleg): void {
       });
     }
 
-    const expectedChange = roundToCent(cash.amountReceived - receipt.totalGross);
-    if (Math.abs(cash.changeGiven - expectedChange) > 0.01) {
+    // Die Gesamtdifferenz zwischen gezahltem Betrag und Rechnungssumme
+    const totalDifference = roundToCent(cash.amountReceived - receipt.totalGross);
+
+    // Die Gesamtdifferenz MUSS gleich: Rückgeld + Trinkgeld sein
+    const tip = cash.tip ?? 0;
+    const expectedTotalDifference = roundToCent(cash.changeGiven + tip);
+
+    if (Math.abs(totalDifference - expectedTotalDifference) > 0.01) {
       errors.push({
         field: 'paymentDetails.changeGiven',
-        message: `Rückgeld stimmt nicht. Erwartet: ${expectedChange}€, erhalten: ${cash.changeGiven}€`,
+        message: `Zahlungsdetails stimmen nicht. Rückgeld + Trinkgeld (${cash.changeGiven}€ + ${tip}€ = ${expectedTotalDifference}€) stimmen nicht mit Differenz (${totalDifference}€) überein`,
         severity: 'error',
       });
     }

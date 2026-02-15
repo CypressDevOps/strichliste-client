@@ -10,7 +10,7 @@ interface PayDeckelModalProps {
     amount: number,
     deckelId?: string,
     moveToGone?: boolean,
-    paymentDetails?: { amountReceived: number; changeGiven: number }
+    paymentDetails?: { amountReceived: number; changeGiven: number; tip?: number }
   ) => void;
   deckelList?: DeckelUIState[];
   selectedDeckelId: string | null;
@@ -31,6 +31,9 @@ export const PayDeckelModal: React.FC<PayDeckelModalProps> = ({
   );
   const [pendingPayment, setPendingPayment] = useState<{ amount: number } | null>(null);
   const [giveChangeBack, setGiveChangeBack] = useState(true);
+  const [acceptAsTip, setAcceptAsTip] = useState(false);
+  const [changeBackAmount, setChangeBackAmount] = useState('');
+  const [tipAmount, setTipAmount] = useState('');
 
   // Sync internal state with prop whenever selectedDeckelId changes or modal opens
   useEffect(() => {
@@ -39,6 +42,10 @@ export const PayDeckelModal: React.FC<PayDeckelModalProps> = ({
       // Reset custom amount and payment details when deckel changes
       setCustom('');
       setPendingPayment(null);
+      setGiveChangeBack(true);
+      setAcceptAsTip(false);
+      setChangeBackAmount('');
+      setTipAmount('');
     }
   }, [selectedDeckelId, isOpen]);
 
@@ -168,9 +175,19 @@ export const PayDeckelModal: React.FC<PayDeckelModalProps> = ({
   // --- Rückgeld-Auswahl Modal ---
   if (pendingPayment) {
     const change = pendingPayment.amount - abs;
+    const showInputFields = (!giveChangeBack && !acceptAsTip) || (giveChangeBack && acceptAsTip);
+
+    // Parse input values
+    const parsedChangeBack = changeBackAmount ? parseFloat(changeBackAmount.replace(',', '.')) : 0;
+    const parsedTip = tipAmount ? parseFloat(tipAmount.replace(',', '.')) : 0;
+
+    // Validate that parsed values don't exceed change
+    const totalDistributed = parsedChangeBack + parsedTip;
+    const isValidDistribution = totalDistributed <= change && totalDistributed > 0;
+
     return (
       <div className='fixed inset-0 bg-black/70 flex items-center justify-center z-50'>
-        <div className='bg-gray-800 p-6 rounded-lg w-80 text-white'>
+        <div className='bg-gray-800 p-6 rounded-lg w-96 text-white'>
           <h2 className='text-xl font-bold mb-4'>Überzahlung bestätigen</h2>
 
           <div className='mb-4 p-3 bg-gray-700 rounded'>
@@ -186,7 +203,7 @@ export const PayDeckelModal: React.FC<PayDeckelModalProps> = ({
             </p>
           </div>
 
-          {/* Checkbox für Rückgeld */}
+          {/* Checkbox 1: Rückgeld auszahlen */}
           <label className='flex items-center gap-3 mb-4 p-3 bg-gray-700 rounded cursor-pointer hover:bg-gray-600'>
             <input
               type='checkbox'
@@ -198,28 +215,156 @@ export const PayDeckelModal: React.FC<PayDeckelModalProps> = ({
               <div className='font-semibold'>Rückgeld auszahlen</div>
               <div className='text-xs text-gray-300 mt-1'>
                 {giveChangeBack
-                  ? `Gast erhält ${change.toFixed(2)} € zurück (Deckel wird bezahlt)`
-                  : 'Differenz bleibt als Guthaben auf dem Deckel'}
+                  ? showInputFields
+                    ? 'Manuell eingeben'
+                    : `Gast erhält ${change.toFixed(2)} € zurück (Deckel wird bezahlt)`
+                  : 'Nicht aktiviert'}
               </div>
             </span>
           </label>
 
+          {/* Checkbox 2: Trinkgeld erhalten */}
+          <label className='flex items-center gap-3 mb-4 p-3 bg-gray-700 rounded cursor-pointer hover:bg-gray-600'>
+            <input
+              type='checkbox'
+              checked={acceptAsTip}
+              onChange={(e) => setAcceptAsTip(e.target.checked)}
+              className='w-5 h-5 cursor-pointer'
+            />
+            <span className='flex-1'>
+              <div className='font-semibold'>Trinkgeld erhalten</div>
+              <div className='text-xs text-gray-300 mt-1'>
+                {acceptAsTip
+                  ? showInputFields
+                    ? 'Manuell eingeben'
+                    : `Differenz ${change.toFixed(2)} € erhalten (Deckel wird bezahlt)`
+                  : 'Nicht aktiviert'}
+              </div>
+            </span>
+          </label>
+
+          {/* Input fields - shown only when both unchecked OR both checked */}
+          {showInputFields && (
+            <div className='mb-4 p-3 bg-gray-700 rounded space-y-3'>
+              {giveChangeBack && (
+                <div>
+                  <label className='block text-sm font-semibold mb-2'>Rückgeld-Betrag</label>
+                  <input
+                    type='text'
+                    value={changeBackAmount}
+                    onChange={(e) => {
+                      let val = e.target.value.replace(/[^\d,]/g, '');
+                      const parts = val.split(',');
+                      if (parts.length > 2) val = parts[0] + ',' + parts.slice(1).join('');
+                      if (parts.length === 2 && parts[1].length > 2) {
+                        val = parts[0] + ',' + parts[1].substring(0, 2);
+                      }
+                      setChangeBackAmount(val);
+
+                      // Auto-calculate tip when both checkboxes are enabled
+                      if (giveChangeBack && acceptAsTip && val) {
+                        const parsedChange = parseFloat(val.replace(',', '.'));
+                        if (!isNaN(parsedChange)) {
+                          const calculatedTip = change - parsedChange;
+                          if (calculatedTip >= 0) {
+                            setTipAmount(calculatedTip.toFixed(2).replace('.', ','));
+                          }
+                        }
+                      }
+                    }}
+                    placeholder={`z.B. ${change.toFixed(2)}`}
+                    className='w-full p-2 rounded bg-gray-600 text-white text-sm'
+                  />
+                  {parsedChangeBack > 0 && (
+                    <p className='text-xs text-blue-400 mt-1'>
+                      {parsedChangeBack.toFixed(2)} € Rückgeld
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {acceptAsTip && (
+                <div>
+                  <label className='block text-sm font-semibold mb-2'>Trinkgeld-Betrag</label>
+                  <input
+                    type='text'
+                    value={tipAmount}
+                    onChange={(e) => {
+                      let val = e.target.value.replace(/[^\d,]/g, '');
+                      const parts = val.split(',');
+                      if (parts.length > 2) val = parts[0] + ',' + parts.slice(1).join('');
+                      if (parts.length === 2 && parts[1].length > 2) {
+                        val = parts[0] + ',' + parts[1].substring(0, 2);
+                      }
+                      setTipAmount(val);
+
+                      // Auto-calculate change back when both checkboxes are enabled
+                      if (giveChangeBack && acceptAsTip && val) {
+                        const parsedTip = parseFloat(val.replace(',', '.'));
+                        if (!isNaN(parsedTip)) {
+                          const calculatedChange = change - parsedTip;
+                          if (calculatedChange >= 0) {
+                            setChangeBackAmount(calculatedChange.toFixed(2).replace('.', ','));
+                          }
+                        }
+                      }
+                    }}
+                    placeholder={`z.B. ${change.toFixed(2)}`}
+                    className='w-full p-2 rounded bg-gray-600 text-white text-sm'
+                  />
+                  {parsedTip > 0 && (
+                    <p className='text-xs text-green-400 mt-1'>
+                      +{parsedTip.toFixed(2)} € Trinkgeld
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {showInputFields && (
+                <p className='text-xs text-gray-400'>
+                  Verbleibend: {Math.max(0, change - totalDistributed).toFixed(2)} €
+                </p>
+              )}
+            </div>
+          )}
+
           <div className='flex flex-col gap-3'>
             <button
-              className='bg-blue-700 hover:bg-blue-600 py-3 rounded font-semibold'
+              disabled={showInputFields && !isValidDistribution}
+              className={`py-3 rounded font-semibold transition-colors ${
+                showInputFields && !isValidDistribution
+                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                  : 'bg-blue-700 hover:bg-blue-600'
+              }`}
               onClick={() => {
-                if (giveChangeBack) {
-                  // Rückgeld auszahlen: Deckelbetrag wird ausgeglichen, Rückgeld-Info wird mitgegeben
-                  onConfirm(abs, internalSelectedDeckelId ?? undefined, false, {
-                    amountReceived: pendingPayment.amount,
-                    changeGiven: change,
-                  });
-                } else {
-                  // Als Guthaben behalten: Voller Betrag wird gezahlt
-                  onConfirm(pendingPayment.amount, internalSelectedDeckelId ?? undefined, false);
+                let changeAmount = 0;
+                let tipAmountFinal = 0;
+
+                if (giveChangeBack && !acceptAsTip && !showInputFields) {
+                  // Only checkbox 1 checked: full change back
+                  changeAmount = change;
+                  tipAmountFinal = 0;
+                } else if (!giveChangeBack && acceptAsTip && !showInputFields) {
+                  // Only checkbox 2 checked: full change as tip
+                  changeAmount = 0;
+                  tipAmountFinal = change;
+                } else if (showInputFields) {
+                  // Both or none checked: use input fields
+                  changeAmount = parsedChangeBack;
+                  tipAmountFinal = parsedTip;
                 }
+
+                onConfirm(abs, internalSelectedDeckelId ?? undefined, false, {
+                  amountReceived: pendingPayment.amount,
+                  changeGiven: changeAmount,
+                  tip: tipAmountFinal > 0 ? tipAmountFinal : undefined,
+                });
+
                 setPendingPayment(null);
-                setGiveChangeBack(true); // Reset für nächstes Mal
+                setGiveChangeBack(true);
+                setAcceptAsTip(false);
+                setChangeBackAmount('');
+                setTipAmount('');
               }}
             >
               Zahlung bestätigen
@@ -229,7 +374,10 @@ export const PayDeckelModal: React.FC<PayDeckelModalProps> = ({
               className='mt-2 text-gray-300 underline'
               onClick={() => {
                 setPendingPayment(null);
-                setGiveChangeBack(true); // Reset
+                setGiveChangeBack(true);
+                setAcceptAsTip(false);
+                setChangeBackAmount('');
+                setTipAmount('');
               }}
             >
               Zurück

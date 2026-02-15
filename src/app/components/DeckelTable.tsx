@@ -9,6 +9,7 @@ interface DeckelTableProps {
   setSelectedTxId: React.Dispatch<React.SetStateAction<string | null>>;
   onAdjustQuantity?: (txId: string, delta: number) => void;
   onDeleteTransaction?: (txId: string) => void;
+  isReadOnly?: boolean;
 }
 
 /**
@@ -16,6 +17,7 @@ interface DeckelTableProps {
  * Produkte sind:
  * - Negative Transaktionen (Verkäufe)
  * - NICHT "Rückgeld"
+ * - NICHT "Trinkgeld"
  * - NICHT übertragen von einem anderen Deckel
  */
 const isProductTransaction = (tx: Transaction): boolean => {
@@ -24,6 +26,9 @@ const isProductTransaction = (tx: Transaction): boolean => {
 
   // Nicht Rückgeld
   if (tx.description === 'Rückgeld') return false;
+
+  // Nicht Trinkgeld
+  if (tx.isTip) return false;
 
   // Nicht übertragen von anderem Deckel
   if (tx.transferredFrom) return false;
@@ -37,6 +42,7 @@ export const DeckelTable: React.FC<DeckelTableProps> = ({
   setSelectedTxId,
   onAdjustQuantity,
   onDeleteTransaction,
+  isReadOnly = false,
 }) => {
   if (!selectedDeckel) return null;
 
@@ -157,8 +163,15 @@ export const DeckelTable: React.FC<DeckelTableProps> = ({
                                 e.stopPropagation();
                                 onDeleteTransaction?.(t.id ?? '');
                               }}
-                              className='px-2 py-1 bg-red-800 hover:bg-red-700 rounded text-white text-xs ml-1'
-                              title='Eintrag löschen'
+                              disabled={isReadOnly}
+                              className={`px-2 py-1 rounded text-white text-xs ml-1 ${
+                                isReadOnly
+                                  ? 'bg-gray-600 cursor-not-allowed'
+                                  : 'bg-red-800 hover:bg-red-700'
+                              }`}
+                              title={
+                                isReadOnly ? 'Kann nicht bearbeitet werden' : 'Eintrag löschen'
+                              }
                             >
                               🗑️
                             </button>

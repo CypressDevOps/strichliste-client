@@ -23,6 +23,8 @@ export interface Transaction {
   amountReceived?: number;
   /** Bei Barzahlung mit Rückgeld: Das zurückgegebene Wechselgeld */
   changeGiven?: number;
+  /** Markiert einen Trinkgeld-Eintrag (wird nicht in Umsatzstatistik aufgenommen) */
+  isTip?: boolean;
 }
 
 export interface DeckelUIState {
@@ -113,6 +115,7 @@ export interface CashPayment {
   method: 'CASH';
   amountReceived: number;
   changeGiven: number;
+  tip?: number;
 }
 
 /**

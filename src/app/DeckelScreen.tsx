@@ -208,11 +208,34 @@ ${salesTransactions.map((tx) => `  - ${tx.description}: ${tx.sum.toFixed(2)}€`
 
       console.log(debugInfo);
 
+      // Finde Rückgeld- und Trinkgeld-Transaktionen
+      const changeTransaction = (selectedDeckel?.transactions || []).find(
+        (tx) => tx.description === 'Rückgeld'
+      );
+      const tipTransaction = (selectedDeckel?.transactions || []).find(
+        (tx) => tx.isTip === true || tx.description === 'Trinkgeld'
+      );
+
+      const changeGiven = Math.abs(changeTransaction?.sum ?? 0); // Rückgeld ist negativ
+      let tip: number | undefined = Math.abs(tipTransaction?.sum ?? 0); // Trinkgeld ist negativ
+      if (tip === 0) tip = undefined;
+
+      // Berechne amountReceived: totalGross + changeGiven + (tip || 0)
+      const amountReceivedCalculated = totalGrossToPay + changeGiven + (tip || 0);
+
+      // Debug
+      console.log('DeckelScreen - Payment Details:', {
+        totalGrossToPay: totalGrossToPay,
+        changeGiven: changeGiven,
+        tip: tip,
+        amountReceived: amountReceivedCalculated,
+      });
+
       const receipt = await generateReceipt({
         business: loadBusinessInfo(), // Lade aus localStorage
         transactions: salesTransactions, // Nur Verkäufe an die Quittung
         paymentMethod: 'CASH',
-        paymentDetails: { amountReceived },
+        paymentDetails: { amountReceived: amountReceivedCalculated, changeGiven, tip },
         guestName: selectedDeckel.name,
         tableNumber: selectedDeckel.id,
         taxRateMap, // Übergebe das Steuersatz-Mapping
@@ -570,6 +593,7 @@ ${salesTransactions.map((tx) => `  - ${tx.description}: ${tx.sum.toFixed(2)}€`
                 setSelectedTxId={setSelectedTxId}
                 onAdjustQuantity={handleAdjustQuantity}
                 onDeleteTransaction={handleDeleteTransaction}
+                isReadOnly={isReadOnly}
               />
 
               {!selectedCategory ? (

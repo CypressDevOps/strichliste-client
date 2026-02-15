@@ -482,12 +482,13 @@ export const useDeckelState = (emergencyOverride: boolean = false) => {
   const abendAbschliessen = () => {
     const now = new Date();
 
-    // Berechne den Gesamtumsatz (alle Zahlungs-Transaktionen)
+    // Berechne den Gesamtumsatz (alle Zahlungs-Transaktionen, ohne Trinkgeld)
     let totalRevenue = 0;
     deckelList.forEach((deckel) => {
       deckel.transactions?.forEach((tx) => {
         // Nur positive Zahlungen zählen (Einzahlungen vom Gast)
-        if (tx.description === 'Zahlung' && tx.sum > 0) {
+        // NICHT Trinkgeld (isTip === true)
+        if (tx.description === 'Zahlung' && tx.sum > 0 && !tx.isTip) {
           totalRevenue += tx.sum;
         }
       });

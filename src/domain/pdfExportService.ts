@@ -309,14 +309,26 @@ export async function exportReceiptToPDF(
       yPosition
     );
     yPosition += 4;
-    doc.setFont('helvetica', 'bold');
-    doc.text(
-      `Rückgeld: ${formatCurrencyDE(receipt.paymentDetails.changeGiven)}`,
-      marginLeft,
-      yPosition
-    );
-    doc.setFont('helvetica', 'normal');
-    yPosition += 4;
+
+    // Rückgeld anzeigen (falls vorhanden und > 0)
+    if (receipt.paymentDetails.changeGiven > 0) {
+      doc.setFont('helvetica', 'bold');
+      doc.text(
+        `Rückgeld: ${formatCurrencyDE(receipt.paymentDetails.changeGiven)}`,
+        marginLeft,
+        yPosition
+      );
+      doc.setFont('helvetica', 'normal');
+      yPosition += 4;
+    }
+
+    // Trinkgeld anzeigen (falls vorhanden und > 0)
+    if (receipt.paymentDetails.tip && receipt.paymentDetails.tip > 0) {
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Trinkgeld: ${formatCurrencyDE(receipt.paymentDetails.tip)}`, marginLeft, yPosition);
+      doc.setFont('helvetica', 'normal');
+      yPosition += 4;
+    }
   } else if (isCardPayment(receipt.paymentDetails)) {
     doc.text('Zahlungsart: Kartenzahlung', marginLeft, yPosition);
     yPosition += 4;
