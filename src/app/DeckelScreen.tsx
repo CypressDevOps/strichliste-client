@@ -32,8 +32,10 @@ import { EmergencyOverrideModal } from './EmergencyOverrideModal';
 import { BackupImportModal } from './BackupImportModal';
 import { MonthlyReportModal } from './MonthlyReportModal';
 import { BelegSelectModal } from './BelegSelectModal';
+import { SalesStatsModal } from './SalesStatsModal';
 import { BeerClickerGame } from './BeerClickerGame';
 import { loadBusinessInfo } from '../domain/businessInfoService';
+import { recordSale } from '../services/salesStatsService';
 import { GameMenu } from './GameMenu';
 import { Game2048 } from './Game2048';
 import { DeutschlandQuiz } from './DeutschlandQuiz';
@@ -74,6 +76,7 @@ export const DeckelScreen: React.FC = () => {
   const [isMonthlyReportOpen, setIsMonthlyReportOpen] = useState(false);
   const [isPdfSubmenuOpen, setIsPdfSubmenuOpen] = useState(false);
   const [isBelegSelectOpen, setIsBelegSelectOpen] = useState(false);
+  const [isSalesStatsOpen, setIsSalesStatsOpen] = useState(false);
 
   // Easter Egg Game States
   const [isGameMenuOpen, setIsGameMenuOpen] = useState(false);
@@ -377,6 +380,15 @@ export const DeckelScreen: React.FC = () => {
               </button>
               <button
                 onClick={() => {
+                  setIsSalesStatsOpen(true);
+                  setIsMenuDropdownOpen(false);
+                }}
+                className='w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition'
+              >
+                Verkaufsstatistik
+              </button>
+              <button
+                onClick={() => {
                   setIsAdminModalOpen(true);
                   setIsMenuDropdownOpen(false);
                 }}
@@ -484,6 +496,8 @@ export const DeckelScreen: React.FC = () => {
                             count,
                             sum: -(count * product.price),
                           });
+                          // Record sale for statistics
+                          recordSale(product.name, count, product.price);
                         } finally {
                           setTimeout(() => setIsAddingProductTransaction(false), 300);
                         }
@@ -889,20 +903,24 @@ export const DeckelScreen: React.FC = () => {
         products={products}
       />
 
-      {/* Easter Egg: Game Menu & Games */}
-      <GameMenu
-        isOpen={isGameMenuOpen}
-        onClose={() => setIsGameMenuOpen(false)}
-        onSelectBeerClicker={() => setIsBeerGameOpen(true)}
-        onSelect2048={() => setIs2048Open(true)}
-        onSelectDeutschlandQuiz={() => setIsDeutschlandQuizOpen(true)}
-      />
-      <BeerClickerGame isOpen={isBeerGameOpen} onClose={() => setIsBeerGameOpen(false)} />
-      <Game2048 isOpen={is2048Open} onClose={() => setIs2048Open(false)} />
-      <DeutschlandQuiz
-        isOpen={isDeutschlandQuizOpen}
-        onClose={() => setIsDeutschlandQuizOpen(false)}
-      />
+      <SalesStatsModal isOpen={isSalesStatsOpen} onClose={() => setIsSalesStatsOpen(false)} />
+
+      {/*  Egg: Game Menu & Games */}
+      <>
+        <GameMenu
+          isOpen={isGameMenuOpen}
+          onClose={() => setIsGameMenuOpen(false)}
+          onSelectBeerClicker={() => setIsBeerGameOpen(true)}
+          onSelect2048={() => setIs2048Open(true)}
+          onSelectDeutschlandQuiz={() => setIsDeutschlandQuizOpen(true)}
+        />
+        <BeerClickerGame isOpen={isBeerGameOpen} onClose={() => setIsBeerGameOpen(false)} />
+        <Game2048 isOpen={is2048Open} onClose={() => setIs2048Open(false)} />
+        <DeutschlandQuiz
+          isOpen={isDeutschlandQuizOpen}
+          onClose={() => setIsDeutschlandQuizOpen(false)}
+        />
+      </>
     </div>
   );
 };
