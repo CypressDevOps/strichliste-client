@@ -36,6 +36,22 @@ const isProductTransaction = (tx: Transaction): boolean => {
   return true;
 };
 
+const getStrichSegments = (count: number): number[] => {
+  const segments: number[] = [];
+  let remaining = count;
+
+  while (remaining > 5) {
+    segments.push(5);
+    remaining -= 5;
+  }
+
+  if (remaining > 0) {
+    segments.push(remaining);
+  }
+
+  return segments;
+};
+
 export const DeckelTable: React.FC<DeckelTableProps> = ({
   selectedDeckel,
   selectedTxId,
@@ -121,12 +137,17 @@ export const DeckelTable: React.FC<DeckelTableProps> = ({
                               (von {t.transferredFrom})
                             </span>
                           )}
-                          {t.count > 0 && t.count <= 5 && (
-                            <img
-                              src={`/images/strichliste-icons/strich-${t.count}.png`}
-                              alt={`${t.count}x`}
-                              className='h-6 inline-block opacity-80'
-                            />
+                          {t.count > 0 && (
+                            <span className='inline-flex items-center gap-1'>
+                              {getStrichSegments(t.count).map((segment, segmentIndex) => (
+                                <img
+                                  key={`${t.id ?? index}-${segmentIndex}`}
+                                  src={`/images/strichliste-icons/strich-${segment}.png`}
+                                  alt={`${segment}x`}
+                                  className='h-6 inline-block opacity-80'
+                                />
+                              ))}
+                            </span>
                           )}
                         </div>
                       </td>
