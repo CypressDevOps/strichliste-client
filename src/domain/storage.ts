@@ -1,4 +1,5 @@
 import { DeckelUIState } from './models';
+import { safeJsonParse } from '../utils/safeJson';
 
 const STORAGE_KEY = 'deckel_state_v1';
 
@@ -8,12 +9,16 @@ export const loadFromStorage = (): DeckelUIState[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
-    const parsed = JSON.parse(raw);
+    const parsed = safeJsonParse(raw, [], {
+      label: 'deckel_state_v1',
+      storageKey: STORAGE_KEY,
+    });
 
     let deckelList: DeckelUIState[] = [];
     // falls Struktur { deckelList: [...] }
-    if (Array.isArray(parsed?.deckelList)) deckelList = parsed.deckelList;
-    else if (Array.isArray(parsed)) deckelList = parsed;
+    if (Array.isArray((parsed as { deckelList?: DeckelUIState[] })?.deckelList)) {
+      deckelList = (parsed as { deckelList?: DeckelUIState[] }).deckelList ?? [];
+    } else if (Array.isArray(parsed)) deckelList = parsed;
     else return [];
 
     return deckelList;

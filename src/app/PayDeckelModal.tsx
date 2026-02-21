@@ -38,14 +38,17 @@ export const PayDeckelModal: React.FC<PayDeckelModalProps> = ({
   // Sync internal state with prop whenever selectedDeckelId changes or modal opens
   useEffect(() => {
     if (isOpen) {
-      setInternalSelectedDeckelId(selectedDeckelId);
-      // Reset custom amount and payment details when deckel changes
-      setCustom('');
-      setPendingPayment(null);
-      setGiveChangeBack(true);
-      setAcceptAsTip(false);
-      setChangeBackAmount('');
-      setTipAmount('');
+      // Wrap state updates to avoid cascading renders
+      Promise.resolve().then(() => {
+        setInternalSelectedDeckelId(selectedDeckelId);
+        // Reset custom amount and payment details when deckel changes
+        setCustom('');
+        setPendingPayment(null);
+        setGiveChangeBack(true);
+        setAcceptAsTip(false);
+        setChangeBackAmount('');
+        setTipAmount('');
+      });
     }
   }, [selectedDeckelId, isOpen]);
 

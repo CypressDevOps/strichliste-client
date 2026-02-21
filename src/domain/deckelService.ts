@@ -8,6 +8,7 @@ import {
   toDeckelForm,
 } from '../utils/nameUtils';
 import { saveDailyRevenue } from './cashReportService';
+import { safeJsonParse } from '../utils/safeJson';
 // -----------------------------
 // ID GENERATOR
 // -----------------------------
@@ -114,7 +115,18 @@ const loadInitialState = (): {
       return { list: [], closed: false, closedAt: null };
     }
 
-    const parsed = JSON.parse(raw);
+    const parsed = safeJsonParse<{
+      deckelList?: DeckelUIState[];
+      isAbendGeschlossen?: boolean;
+      abendClosedAt?: string;
+    }>(
+      raw,
+      {},
+      {
+        label: 'deckel_state_v1',
+        storageKey: STORAGE_KEY,
+      }
+    );
 
     let list: DeckelUIState[] = parsed.deckelList ?? [];
     let closed = parsed.isAbendGeschlossen ?? false;

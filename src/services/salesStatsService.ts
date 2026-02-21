@@ -5,6 +5,7 @@
  * DATENSCHUTZ: Keine personenbezogenen Daten!
  * Gespeichert werden nur: Produktname, Menge, Preis, Timestamp
  */
+import { safeJsonParse } from '../utils/safeJson';
 
 const STORAGE_KEY = 'sales_stats';
 
@@ -62,7 +63,10 @@ export function getAllSales(): SaleRecord[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
-    return JSON.parse(raw);
+    return safeJsonParse(raw, [], {
+      label: 'sales_stats',
+      storageKey: STORAGE_KEY,
+    });
   } catch (error) {
     console.error('Fehler beim Laden der Verkaufsstatistiken:', error);
     return [];

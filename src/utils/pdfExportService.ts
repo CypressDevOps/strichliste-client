@@ -2,6 +2,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { DeckelUIState, Transaction, Product } from '../domain/models';
+import { safeJsonParse } from './safeJson';
 
 interface CashReport {
   date: string;
@@ -43,7 +44,10 @@ export async function generateMonthlyReportPDF(year: number, month: number): Pro
     return;
   }
 
-  const allReports: CashReport[] = JSON.parse(reportsString);
+  const allReports: CashReport[] = safeJsonParse(reportsString, [], {
+    label: 'cash_reports',
+    storageKey: 'cash_reports',
+  });
 
   // Filtere Berichte für den gewählten Monat
   const monthReports = allReports.filter((report) => {
@@ -418,7 +422,10 @@ export async function generateBelegPDF(deckels: DeckelUIState[]): Promise<void> 
 
   // Lade Produkte aus localStorage für Kategorieermittlung
   const productsString = localStorage.getItem('products');
-  const products = productsString ? JSON.parse(productsString) : [];
+  const products = safeJsonParse<Product[]>(productsString, [], {
+    label: 'products',
+    storageKey: 'products',
+  });
 
   // Kategorisiere Artikel nach Steuersatz
   let summe7Prozent = 0;
@@ -701,7 +708,10 @@ export async function generateBelegPDFAsDataURL(deckels: DeckelUIState[]): Promi
 
   // Lade Produkte aus localStorage für Kategorieermittlung
   const productsString = localStorage.getItem('products');
-  const products = productsString ? JSON.parse(productsString) : [];
+  const products = safeJsonParse<Product[]>(productsString, [], {
+    label: 'products',
+    storageKey: 'products',
+  });
 
   // Kategorisiere Artikel nach Steuersatz
   let summe7Prozent = 0;

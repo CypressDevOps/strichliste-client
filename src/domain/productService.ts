@@ -1,5 +1,6 @@
 // src/domain/productService.ts
 import { Product } from './models';
+import { safeJsonParse } from '../utils/safeJson';
 
 const STORAGE_KEY = 'products';
 
@@ -167,7 +168,10 @@ export const productService = {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        const parsed = JSON.parse(stored);
+        const parsed = safeJsonParse<Product[]>(stored, DEFAULT_PRODUCTS, {
+          label: 'products',
+          storageKey: STORAGE_KEY,
+        });
         return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_PRODUCTS;
       }
       // Initialize with defaults

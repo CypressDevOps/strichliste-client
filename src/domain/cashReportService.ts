@@ -1,5 +1,7 @@
 // src/domain/cashReportService.ts
 
+import { safeJsonParse } from '../utils/safeJson';
+
 export interface DailyRevenue {
   date: string; // ISO date string (YYYY-MM-DD)
   revenue: number; // Total revenue for that day
@@ -45,7 +47,10 @@ export function getAllReports(): DailyRevenue[] {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return [];
-    return JSON.parse(stored) as DailyRevenue[];
+    return safeJsonParse<DailyRevenue[]>(stored, [], {
+      label: 'cash_reports',
+      storageKey: STORAGE_KEY,
+    });
   } catch (error) {
     console.error('Error loading cash reports:', error);
     return [];

@@ -33,6 +33,8 @@ import { BackupImportModal } from './BackupImportModal';
 import { MonthlyReportModal } from './MonthlyReportModal';
 import { BelegSelectModal } from './BelegSelectModal';
 import { SalesStatsModal } from './SalesStatsModal';
+import { StockOverviewModal } from './StockOverviewModal';
+import { StockImportModal } from './StockImportModal';
 import { BeerClickerGame } from './BeerClickerGame';
 import { loadBusinessInfo } from '../domain/businessInfoService';
 import { recordSale } from '../services/salesStatsService';
@@ -77,6 +79,11 @@ export const DeckelScreen: React.FC = () => {
   const [isPdfSubmenuOpen, setIsPdfSubmenuOpen] = useState(false);
   const [isBelegSelectOpen, setIsBelegSelectOpen] = useState(false);
   const [isSalesStatsOpen, setIsSalesStatsOpen] = useState(false);
+
+  // Stock Management States
+  const [isStockMenuOpen, setIsStockMenuOpen] = useState(false);
+  const [isStockOverviewOpen, setIsStockOverviewOpen] = useState(false);
+  const [isStockImportOpen, setIsStockImportOpen] = useState(false);
 
   // Easter Egg Game States
   const [isGameMenuOpen, setIsGameMenuOpen] = useState(false);
@@ -387,6 +394,44 @@ export const DeckelScreen: React.FC = () => {
               >
                 Verkaufsstatistik
               </button>
+              <div>
+                <button
+                  onClick={() => setIsStockMenuOpen(!isStockMenuOpen)}
+                  className={`w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition flex items-center justify-between ${!isStockMenuOpen ? 'rounded-b-lg' : ''}`}
+                >
+                  <span>Bestand</span>
+                  <span
+                    className='text-gray-400 transform transition-transform'
+                    style={{ transform: isStockMenuOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}
+                  >
+                    ›
+                  </span>
+                </button>
+                {isStockMenuOpen && (
+                  <div className='bg-gray-900 border-t border-gray-700'>
+                    <button
+                      onClick={() => {
+                        setIsStockOverviewOpen(true);
+                        setIsMenuDropdownOpen(false);
+                        setIsStockMenuOpen(false);
+                      }}
+                      className='w-full text-left px-6 py-3 text-white hover:bg-gray-700 transition flex items-center gap-2'
+                    >
+                      <span>Bestandsübersicht</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsStockImportOpen(true);
+                        setIsMenuDropdownOpen(false);
+                        setIsStockMenuOpen(false);
+                      }}
+                      className='w-full text-left px-6 py-3 text-white hover:bg-gray-700 rounded-b-lg transition flex items-center gap-2'
+                    >
+                      <span>Bestand importieren</span>
+                    </button>
+                  </div>
+                )}
+              </div>
               <button
                 onClick={() => {
                   setIsAdminModalOpen(true);
@@ -904,6 +949,13 @@ export const DeckelScreen: React.FC = () => {
       />
 
       <SalesStatsModal isOpen={isSalesStatsOpen} onClose={() => setIsSalesStatsOpen(false)} />
+
+      {/* Stock Management Modals */}
+      <StockOverviewModal
+        isOpen={isStockOverviewOpen}
+        onClose={() => setIsStockOverviewOpen(false)}
+      />
+      <StockImportModal isOpen={isStockImportOpen} onClose={() => setIsStockImportOpen(false)} />
 
       {/*  Egg: Game Menu & Games */}
       <>

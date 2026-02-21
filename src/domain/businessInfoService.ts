@@ -1,5 +1,6 @@
 // src/domain/businessInfoService.ts
 import { BusinessData } from './models';
+import { safeJsonParse } from '../utils/safeJson';
 
 const STORAGE_KEY = 'business_info';
 
@@ -20,7 +21,14 @@ export function loadBusinessInfo(): BusinessData {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_BUSINESS_INFO;
 
-    const parsed = JSON.parse(raw);
+    const parsed = safeJsonParse<Partial<BusinessData>>(
+      raw,
+      {},
+      {
+        label: 'business_info',
+        storageKey: STORAGE_KEY,
+      }
+    );
     return {
       ...DEFAULT_BUSINESS_INFO,
       ...parsed,

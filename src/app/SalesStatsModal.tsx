@@ -35,7 +35,7 @@ export const SalesStatsModal: React.FC<SalesStatsModalProps> = ({ isOpen, onClos
 
   const monthlyData = useMemo(() => {
     return aggregateByMonth();
-  }, [startDate, endDate]);
+  }, []);
 
   const summary = useMemo(() => {
     return getStatsSummary(startDate || undefined, endDate || undefined);
