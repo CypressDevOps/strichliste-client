@@ -17,15 +17,29 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
 }) => {
   return (
     <div className='mt-6'>
-      <div className='flex items-center justify-between mb-4 px-4'>
+      <div className='flex items-center justify-between mb-6 px-4'>
         <button
           onClick={onBack}
-          className='text-gray-300 hover:text-white flex items-center gap-2 text-lg font-semibold transition'
+          className='
+            px-4 py-2 
+            bg-gradient-to-r from-gray-700 to-gray-800
+            hover:from-blue-600 hover:to-blue-700
+            text-gray-300 hover:text-white 
+            flex items-center gap-2 
+            text-lg font-semibold 
+            rounded-lg
+            border-2 border-gray-600/50 hover:border-blue-400
+            transition-all duration-300
+            hover:scale-105 active:scale-95
+            hover:shadow-lg hover:shadow-blue-500/30
+          '
         >
           ← Zurück
         </button>
-        <h3 className='text-xl font-semibold text-gray-200'>{category}</h3>
-        <div className='w-24'></div>
+        <h3 className='text-xl font-bold text-gray-200 px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700/50'>
+          {category}
+        </h3>
+        <div className='w-32'></div>
       </div>
 
       <div className='grid grid-cols-1 md:grid-cols-2 gap-6 px-4'>
@@ -50,18 +64,44 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
               </div>
             </div>
 
-            <div className='flex gap-2 justify-center'>
+            <div className='flex gap-3 justify-center'>
               {[1, 2, 3, 4, 5].map((count) => (
                 <button
                   key={count}
                   onClick={() => onAddProduct(product, count)}
-                  className='w-16 h-16 bg-gray-700 hover:bg-gray-600 rounded flex items-center justify-center transition hover:scale-105 active:scale-95'
+                  className='
+                    group/btn
+                    relative
+                    w-16 h-16 
+                    bg-gradient-to-br from-gray-700 to-gray-800
+                    hover:from-green-600 hover:to-green-700
+                    rounded-xl 
+                    flex items-center justify-center 
+                    transition-all duration-300 
+                    hover:scale-125 
+                    active:scale-90
+                    border-2 border-gray-600/50 
+                    hover:border-green-400
+                    cursor-pointer 
+                    hover:rotate-3
+                    hover:shadow-2xl hover:shadow-green-500/50
+                    overflow-hidden
+                    before:absolute before:inset-0 before:rounded-xl
+                    before:bg-gradient-to-br before:from-white/0 before:to-white/0
+                    hover:before:from-white/20 hover:before:to-transparent
+                    before:transition-all before:duration-300
+                  '
                 >
                   <img
                     src={`/images/strichliste-icons/strich-${count}.png`}
                     alt={`${count}x`}
-                    className='w-12 h-12'
+                    className='w-12 h-12 relative z-10 group-hover/btn:brightness-125 group-hover/btn:drop-shadow-[0_0_8px_rgba(34,197,94,0.8)] transition-all duration-300'
                   />
+
+                  {/* Puls-Effekt beim Hover */}
+                  <div className='absolute inset-0 rounded-xl opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300'>
+                    <div className='absolute inset-0 rounded-xl border-2 border-green-400 animate-ping opacity-30'></div>
+                  </div>
                 </button>
               ))}
             </div>
