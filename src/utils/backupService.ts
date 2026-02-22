@@ -229,17 +229,17 @@ export function hasBackupAvailable(): boolean {
 export function isMainDataMissing(): boolean {
   const deckelState = localStorage.getItem('deckel_state_v1');
 
-  // Wenn key nicht existiert oder leer ist
-  if (!deckelState) return true;
+  // Wenn key nicht existiert, leer oder explizit "null" (string)
+  if (!deckelState || deckelState === 'null') return false;
 
   try {
     const parsed = JSON.parse(deckelState);
     // Wenn das Array leer ist oder keine Deckel vorhanden sind
     if (!parsed || !Array.isArray(parsed) || parsed.length === 0) {
-      return true;
+      return false;
     }
   } catch {
-    return true;
+    return false;
   }
 
   return false;
@@ -271,16 +271,25 @@ export function restoreFromLocalBackup(): boolean {
       return false;
     }
 
-    // Daten wiederherstellen
-    if (backup.data.deckel_state_v1) {
-      localStorage.setItem('deckel_state_v1', backup.data.deckel_state_v1);
-    }
-    if (backup.data.cash_reports) {
-      localStorage.setItem('cash_reports', backup.data.cash_reports);
-    }
-    if (backup.data.products) {
-      localStorage.setItem('products', backup.data.products);
-    }
+    // Daten wiederherstellen (immer setzen, auch wenn null)
+    localStorage.setItem(
+      'deckel_state_v1',
+      backup.data.deckel_state_v1 !== null && backup.data.deckel_state_v1 !== undefined
+        ? backup.data.deckel_state_v1
+        : 'null'
+    );
+    localStorage.setItem(
+      'cash_reports',
+      backup.data.cash_reports !== null && backup.data.cash_reports !== undefined
+        ? backup.data.cash_reports
+        : 'null'
+    );
+    localStorage.setItem(
+      'products',
+      backup.data.products !== null && backup.data.products !== undefined
+        ? backup.data.products
+        : 'null'
+    );
 
     // Stelle ALLE Daten wieder her falls vorhanden
     if (backup.data._all_data) {
