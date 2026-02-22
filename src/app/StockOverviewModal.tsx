@@ -30,6 +30,7 @@ export const StockOverviewModal: React.FC<StockOverviewModalProps> = ({ isOpen, 
   const [showBulkEditor, setShowBulkEditor] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [stocks, setStocks] = useState<ProductStock[]>([]);
 
   // Helper: Pluralisiert Verpackungseinheiten
   const pluralizePackingUnit = (unit: string, count: number): string => {
@@ -100,15 +101,14 @@ export const StockOverviewModal: React.FC<StockOverviewModalProps> = ({ isOpen, 
 
   const allProducts = useMemo(() => {
     return productService.loadProducts();
-  }, []);
+  }, [refreshKey]);
 
-  const stocks = useMemo(() => {
-    // Erst alle Stocks laden
+  // Lade Stocks neu bei refreshKey oder filter Änderungen
+  useEffect(() => {
     const allStocks = filterStocks(filter);
     const stockMap = new Map(allStocks.map((s) => [s.product_id, s]));
 
-    // Dann alle Produkte iterieren und Stocks hinzufügen oder als 0 eintragen
-    return allProducts.map(
+    const updated = allProducts.map(
       (product) =>
         stockMap.get(product.id) ||
         ({
@@ -119,23 +119,36 @@ export const StockOverviewModal: React.FC<StockOverviewModalProps> = ({ isOpen, 
           last_updated_at: new Date().toISOString(),
         } as ProductStock)
     );
-    // refreshKey als Dependency um Re-Fetch bei externen Updates zu triggern
-  }, [filter, allProducts, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Async setState um cascading renders zu vermeiden
+    Promise.resolve().then(() => {
+      setStocks(updated);
+    });
+  }, [refreshKey, filter, allProducts]);
 
   const products = useMemo(() => {
     return new Map(allProducts.map((p: Product) => [p.id, p]));
   }, [allProducts]);
 
-  // Refresh wenn Stock-Daten von außen geändert werden (z.B. von Import)
+  // Refresh wenn Stock-Daten geändert werden
   useEffect(() => {
     const handleStockUpdated = () => {
-      // Inkrementiere refreshKey um useMemo neu auszuführen
       setRefreshKey((prev) => prev + 1);
     };
 
     window.addEventListener('stock-updated', handleStockUpdated);
     return () => window.removeEventListener('stock-updated', handleStockUpdated);
   }, []);
+
+  // Aktualisiere Daten wenn Modal geöffnet wird
+  useEffect(() => {
+    if (isOpen) {
+      // Async setState um cascading renders zu vermeiden
+      Promise.resolve().then(() => {
+        setRefreshKey((prev) => prev + 1);
+      });
+    }
+  }, [isOpen]);
 
   const getPackedTotal = (breakdown: PackingBreakdownEntry[]): number => {
     return breakdown.reduce((sum, entry) => sum + entry.packs * entry.units_per_pack, 0);
