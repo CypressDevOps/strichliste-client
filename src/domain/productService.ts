@@ -189,7 +189,14 @@ export const productService = {
           label: 'products',
           storageKey: STORAGE_KEY,
         });
-        return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_PRODUCTS;
+        // Migration: taxRate ergänzen, falls nicht vorhanden
+        const migrated = Array.isArray(parsed)
+          ? parsed.map((p) => ({
+              ...p,
+              taxRate: p.taxRate !== undefined ? p.taxRate : 0.19,
+            }))
+          : DEFAULT_PRODUCTS;
+        return migrated.length > 0 ? migrated : DEFAULT_PRODUCTS;
       }
       // Initialize with defaults
       this.saveProducts(DEFAULT_PRODUCTS);

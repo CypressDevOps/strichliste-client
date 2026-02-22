@@ -34,6 +34,7 @@ const EPIC_KEY_TO_TITLE = new Map([
   ['EPIC-009', 'Sicherheit und Notfall'],
   ['EPIC-010', 'Bestandsverwaltung und Lager'],
   ['EPIC-011', 'Technische Einstellungen und Debug'],
+  ['EPIC-012', 'Migration und Kompatibilität'],
 ]);
 
 const BACKLOG_ITEMS = [
