@@ -64,8 +64,7 @@ export const BelegSelectModal: React.FC<BelegSelectModalProps> = ({
       // Erstelle Tax-Rate-Map: Snacks = 7%, Rest = 19%
       const taxRateMap = new Map<string, number>();
       for (const product of products) {
-        const taxRate = product.category === 'Snacks' ? 7 : 19;
-        taxRateMap.set(product.name, taxRate);
+        taxRateMap.set(product.name, product.taxRate ?? 19);
       }
 
       // Berechne Gesamtsumme (BRUTTO)

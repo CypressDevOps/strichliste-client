@@ -56,6 +56,8 @@ export interface Product {
   category: ProductCategory;
   sortOrder: number;
   isActive: boolean;
+  /** Mehrwertsteuersatz in % (z.B. 19, 7, 0) */
+  taxRate: number;
 }
 
 // ===== PROFESSIONAL RECEIPT MODELS (GASTBELEG) =====

@@ -540,6 +540,7 @@ export const StockImportModal: React.FC<StockImportModalProps> = ({ isOpen, onCl
       icon: '',
       category: newProductCategory,
       isActive: true,
+      taxRate: 0.19, // Standardwert, ggf. UI ergänzen
     });
 
     // Lade neu erstelltes Produkt

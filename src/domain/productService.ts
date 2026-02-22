@@ -15,6 +15,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     category: 'Bier',
     sortOrder: 1,
     isActive: true,
+    taxRate: 19,
   },
   {
     id: 'alkoholfrei-03',
@@ -24,6 +25,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     category: 'Bier',
     sortOrder: 2,
     isActive: true,
+    taxRate: 19,
   },
   {
     id: 'alkoholfrei-05',
@@ -33,6 +35,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     category: 'Bier',
     sortOrder: 3,
     isActive: true,
+    taxRate: 19,
   },
   {
     id: 'radler',
@@ -42,6 +45,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     category: 'Bier',
     sortOrder: 4,
     isActive: true,
+    taxRate: 19,
   },
   {
     id: 'weizen',
@@ -51,6 +55,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     category: 'Bier',
     sortOrder: 5,
     isActive: true,
+    taxRate: 19,
   },
   {
     id: 'helles',
@@ -60,6 +65,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     category: 'Bier',
     sortOrder: 6,
     isActive: true,
+    taxRate: 19,
   },
   // Alkoholfreie Getränke
   {
@@ -70,6 +76,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     category: 'Alkoholfreie Getränke',
     sortOrder: 7,
     isActive: true,
+    taxRate: 19,
   },
   {
     id: 'wasser',
@@ -79,6 +86,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     category: 'Alkoholfreie Getränke',
     sortOrder: 9,
     isActive: true,
+    taxRate: 19,
   },
   // Apfelwein / Sekt / Schaumwein
   {
@@ -89,6 +97,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     category: 'Apfelwein / Sekt / Schaumwein',
     sortOrder: 8,
     isActive: true,
+    taxRate: 19,
   },
   {
     id: 'piccolo',
@@ -99,6 +108,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     category: 'Apfelwein / Sekt / Schaumwein',
     sortOrder: 10,
     isActive: true,
+    taxRate: 19,
   },
   // Schnaps
   {
@@ -109,6 +119,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     category: 'Schnaps',
     sortOrder: 11,
     isActive: true,
+    taxRate: 19,
   },
   {
     id: 'schnaps-andere',
@@ -118,6 +129,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     category: 'Schnaps',
     sortOrder: 12,
     isActive: true,
+    taxRate: 19,
   },
   // Snacks
   {
@@ -129,6 +141,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     category: 'Snacks',
     sortOrder: 13,
     isActive: true,
+    taxRate: 7,
   },
   {
     id: 'brezel',
@@ -139,6 +152,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     category: 'Snacks',
     sortOrder: 14,
     isActive: true,
+    taxRate: 7,
   },
   {
     id: 'asia-mix',
@@ -148,6 +162,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     category: 'Snacks',
     sortOrder: 15,
     isActive: true,
+    taxRate: 7,
   },
   {
     id: 'wurst',
@@ -158,6 +173,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     category: 'Snacks',
     sortOrder: 16,
     isActive: true,
+    taxRate: 7,
   },
 ];
 

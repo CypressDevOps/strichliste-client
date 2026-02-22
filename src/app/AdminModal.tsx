@@ -100,6 +100,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
       icon: newForm.icon,
       category: newForm.category,
       isActive: true,
+      taxRate: 0.19, // Standardwert, ggf. UI ergänzen
     });
     setNewForm({ name: '', price: 0, icon: '', category: 'Bier' });
     setIsAddingNew(false);

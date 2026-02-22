@@ -38,6 +38,22 @@ const EPIC_KEY_TO_TITLE = new Map([
 
 const BACKLOG_ITEMS = [
   {
+    epic: 'EPIC-005',
+    feature: 'Mehrere MwSt.-Sätze pro Produkt',
+    type: mapType('User Story'),
+    title: 'Produkte unterstützen verschiedene Mehrwertsteuersätze (z.B. 19%, 7%, 0%)',
+    description:
+      'Jedes Produkt kann einen eigenen MwSt.-Satz haben. Die Produktverwaltung und Beleglogik berücksichtigen dies. UI und Export zeigen den korrekten Steuersatz an.',
+    acceptanceCriteria: [
+      'Admin kann MwSt.-Satz pro Produkt festlegen',
+      'Belege weisen korrekten MwSt.-Satz pro Position aus',
+      'Steuerzusammenfassung gruppiert nach MwSt.-Satz',
+      'Standardwerte: Getränke 19%, Snacks 7%',
+    ],
+    areaPath: defaultAreaPath,
+    iterationPath: defaultIterationPath,
+  },
+  {
     title: 'Deckel-Verwaltung',
     description:
       'Kernfunktionen fuer Deckel, Gaeste und Transaktionen.<br/>Beleg: file:src/domain/deckelService.ts, file:src/app/DeckelScreen.tsx',
