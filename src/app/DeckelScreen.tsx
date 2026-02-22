@@ -388,7 +388,7 @@ export const DeckelScreen: React.FC = () => {
         <div className='relative menu-dropdown-container'>
           <button
             onClick={() => setIsMenuDropdownOpen(!isMenuDropdownOpen)}
-            className='text-gray-400 hover:text-white text-3xl font-bold px-3 py-1 transition'
+            className='text-gray-400 hover:text-white text-4xl font-bold px-6 py-4 transition rounded-lg min-h-[56px] min-w-[56px]'
             title='Menü'
           >
             ⋮
@@ -400,7 +400,7 @@ export const DeckelScreen: React.FC = () => {
                   setIsBusinessInfoOpen(true);
                   setIsMenuDropdownOpen(false);
                 }}
-                className='w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition rounded-t-lg'
+                className='w-full text-left px-6 py-4 text-white hover:bg-gray-700 transition rounded-t-lg text-lg min-h-[56px]'
               >
                 Betriebsinfos
               </button>
@@ -409,7 +409,7 @@ export const DeckelScreen: React.FC = () => {
                   setIsDeckelOverviewOpen(true);
                   setIsMenuDropdownOpen(false);
                 }}
-                className='w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition'
+                className='w-full text-left px-6 py-4 text-white hover:bg-gray-700 transition text-lg min-h-[56px]'
               >
                 Deckelübersicht
               </button>
@@ -418,7 +418,7 @@ export const DeckelScreen: React.FC = () => {
                   setIsCashReportOpen(true);
                   setIsMenuDropdownOpen(false);
                 }}
-                className='w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition'
+                className='w-full text-left px-6 py-4 text-white hover:bg-gray-700 transition text-lg min-h-[56px]'
               >
                 Kassenberichte
               </button>
@@ -427,14 +427,14 @@ export const DeckelScreen: React.FC = () => {
                   setIsSalesStatsOpen(true);
                   setIsMenuDropdownOpen(false);
                 }}
-                className='w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition'
+                className='w-full text-left px-6 py-4 text-white hover:bg-gray-700 transition text-lg min-h-[56px]'
               >
                 Verkaufsstatistik
               </button>
               <div>
                 <button
                   onClick={() => setIsStockMenuOpen(!isStockMenuOpen)}
-                  className={`w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition flex items-center justify-between ${!isStockMenuOpen ? 'rounded-b-lg' : ''}`}
+                  className={`w-full text-left px-6 py-4 text-white hover:bg-gray-700 transition flex items-center justify-between text-lg min-h-[56px] ${!isStockMenuOpen ? 'rounded-b-lg' : ''}`}
                 >
                   <span>Bestand</span>
                   <span
@@ -452,7 +452,7 @@ export const DeckelScreen: React.FC = () => {
                         setIsMenuDropdownOpen(false);
                         setIsStockMenuOpen(false);
                       }}
-                      className='w-full text-left px-6 py-3 text-white hover:bg-gray-700 transition flex items-center gap-2'
+                      className='w-full text-left px-8 py-4 text-white hover:bg-gray-700 transition flex items-center gap-2 text-lg min-h-[56px]'
                     >
                       <span>Bestandsübersicht</span>
                     </button>
