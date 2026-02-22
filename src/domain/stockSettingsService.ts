@@ -1,5 +1,7 @@
 // src/domain/stockSettingsService.ts
 
+import { setItemWithBackup } from '../utils/backupService';
+
 const STOCK_SETTINGS_KEY = 'stock_live_tracking_enabled';
 
 export function isLiveStockTrackingEnabled(): boolean {
@@ -13,7 +15,7 @@ export function isLiveStockTrackingEnabled(): boolean {
 
 export function setLiveStockTracking(enabled: boolean): void {
   try {
-    localStorage.setItem(STOCK_SETTINGS_KEY, enabled ? 'true' : 'false');
+    setItemWithBackup(STOCK_SETTINGS_KEY, enabled ? 'true' : 'false');
   } catch (err) {
     console.error('Failed to save stock tracking setting:', err);
   }

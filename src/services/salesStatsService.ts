@@ -6,6 +6,7 @@
  * Gespeichert werden nur: Produktname, Menge, Preis, Timestamp
  */
 import { safeJsonParse } from '../utils/safeJson';
+import { setItemWithBackup } from '../utils/backupService';
 
 const STORAGE_KEY = 'sales_stats';
 
@@ -78,7 +79,7 @@ export function getAllSales(): SaleRecord[] {
  */
 function saveSales(sales: SaleRecord[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sales));
+    setItemWithBackup(STORAGE_KEY, JSON.stringify(sales));
   } catch (error) {
     console.error('Fehler beim Speichern der Verkaufsstatistiken:', error);
   }

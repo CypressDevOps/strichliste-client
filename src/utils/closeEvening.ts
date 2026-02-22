@@ -1,5 +1,6 @@
 // src/utils/closeEvening.ts
 import { DECKEL_STATUS, DeckelUIState, DeckelStatus } from '../domain/models';
+import { setItemWithBackup } from './backupService';
 
 export type Change = { id: string; from: DeckelStatus; to: DeckelStatus };
 
@@ -112,7 +113,7 @@ export function resetCloseEveningLock(): void {
 /** Parent helper: setze Timestamp nach erfolgreichem Abschluss */
 export function markEveningClosedNow(): void {
   try {
-    localStorage.setItem(LAST_CLOSED_KEY, new Date().toISOString());
+    setItemWithBackup(LAST_CLOSED_KEY, new Date().toISOString());
   } catch {
     // ignore
   }

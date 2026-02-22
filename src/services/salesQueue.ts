@@ -1,4 +1,5 @@
 // src/services/salesQueue.ts
+import { setItemWithBackup } from '../utils/backupService';
 /**
  * IndexedDB Queue für offline Sales-Tracking
  *
@@ -228,7 +229,7 @@ function getPOSId(): string {
 
   if (!posId) {
     posId = `pos_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    localStorage.setItem(STORAGE_KEY, posId);
+    setItemWithBackup(STORAGE_KEY, posId);
   }
 
   return posId;

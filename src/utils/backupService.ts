@@ -7,13 +7,27 @@ export interface BackupData {
     deckel_state_v1: string | null;
     cash_reports: string | null;
     products: string | null;
+    _all_data?: string | null;
   };
 }
 
 /**
- * Erstellt ein Backup aller wichtigen localStorage-Daten
+ * Erstellt ein Backup aller wichtigen localStorage-Daten (ALLE Keys)
  */
 export function createBackup(): BackupData {
+  const allData: Record<string, string | null> = {};
+
+  // Erfasse ALLE localStorage Einträge
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key) {
+      // Ignoriere das Auto-Backup selbst um Rekursion zu vermeiden
+      if (key !== 'deckel_auto_backup') {
+        allData[key] = localStorage.getItem(key);
+      }
+    }
+  }
+
   const backup: BackupData = {
     version: '1.0',
     timestamp: new Date().toISOString(),
@@ -21,6 +35,8 @@ export function createBackup(): BackupData {
       deckel_state_v1: localStorage.getItem('deckel_state_v1'),
       cash_reports: localStorage.getItem('cash_reports'),
       products: localStorage.getItem('products'),
+      // Speichere auch ALLE anderen Einträge
+      _all_data: JSON.stringify(allData),
     },
   };
 
@@ -101,6 +117,20 @@ export function importBackup(file: File): Promise<void> {
           localStorage.setItem('products', backup.data.products);
         }
 
+        // Stelle ALLE Daten wieder her falls vorhanden
+        if (backup.data._all_data) {
+          try {
+            const allData = JSON.parse(backup.data._all_data);
+            for (const [key, value] of Object.entries(allData)) {
+              if (value !== null) {
+                localStorage.setItem(key, value as string);
+              }
+            }
+          } catch (e) {
+            console.warn('Konnte nicht alle Backup-Daten wiederherstellen:', e);
+          }
+        }
+
         console.log('Backup erfolgreich importiert');
 
         // Nach Import neu laden
@@ -123,25 +153,53 @@ export function importBackup(file: File): Promise<void> {
 }
 
 /**
- * Registriert einen Event-Listener für das Schließen des Browsers
- * um automatisch ein Backup zu erstellen
+ * Registriert einen Event-Listener, der automatisch bei jedem localStorage-Change das Backup aktualisiert
  */
-export function registerAutoBackupOnClose(): () => void {
-  const handleBeforeUnload = () => {
+export function registerAutoBackupOnStorageChange(): () => void {
+  let backupTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  const updateBackup = () => {
     try {
-      // Erstelle Backup im Hintergrund
-      exportBackup();
+      saveBackupToLocalStorage();
     } catch (error) {
-      console.error('Auto-Backup fehlgeschlagen:', error);
+      console.error('Auto-Update des Backups fehlgeschlagen:', error);
     }
   };
 
-  window.addEventListener('beforeunload', handleBeforeUnload);
+  // Storage Event - triggert wenn localStorage von einer anderen Tab/Fenster geändert wird
+  const handleStorageChange = () => {
+    // Debounce: mehrere Änderungen in schneller Folge werden zu einer zusammengefasst
+    if (backupTimeout) clearTimeout(backupTimeout);
+    backupTimeout = setTimeout(updateBackup, 500);
+  };
+
+  // Zusätzlich überwachen wir localStorage Änderungen, die IN diesem Tab passieren
+  // Das geht über unsere benutzerdefinierten Events
+  const handleLocalStorageUpdate = () => {
+    updateBackup();
+  };
+
+  window.addEventListener('storage', handleStorageChange);
+  window.addEventListener('deckel-storage-update', handleLocalStorageUpdate);
+
+  console.log('Auto-Backup bei localStorage-Änderungen aktiviert');
 
   // Cleanup-Funktion zurückgeben
   return () => {
-    window.removeEventListener('beforeunload', handleBeforeUnload);
+    window.removeEventListener('storage', handleStorageChange);
+    window.removeEventListener('deckel-storage-update', handleLocalStorageUpdate);
+    if (backupTimeout) clearTimeout(backupTimeout);
   };
+}
+
+/**
+ * Hilfsfunktion: Speichert zu localStorage und triggert Auto-Backup
+ * Nutze diese Funktion statt direktem localStorage.setItem() für besseres Tracking
+ */
+export function setItemWithBackup(key: string, value: string): void {
+  localStorage.setItem(key, value);
+  // Trigger Custom-Event damit das Backup aktualisiert wird
+  window.dispatchEvent(new Event('deckel-storage-update'));
 }
 
 /**
@@ -222,6 +280,20 @@ export function restoreFromLocalBackup(): boolean {
     }
     if (backup.data.products) {
       localStorage.setItem('products', backup.data.products);
+    }
+
+    // Stelle ALLE Daten wieder her falls vorhanden
+    if (backup.data._all_data) {
+      try {
+        const allData = JSON.parse(backup.data._all_data);
+        for (const [key, value] of Object.entries(allData)) {
+          if (value !== null) {
+            localStorage.setItem(key, value as string);
+          }
+        }
+      } catch (e) {
+        console.warn('Konnte nicht alle Backup-Daten wiederherstellen:', e);
+      }
     }
 
     console.log(

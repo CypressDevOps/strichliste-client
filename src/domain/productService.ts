@@ -1,6 +1,7 @@
 // src/domain/productService.ts
 import { Product } from './models';
 import { safeJsonParse } from '../utils/safeJson';
+import { setItemWithBackup } from '../utils/backupService';
 
 const STORAGE_KEY = 'products';
 
@@ -188,7 +189,7 @@ export const productService = {
    */
   saveProducts(products: Product[]): void {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+      setItemWithBackup(STORAGE_KEY, JSON.stringify(products));
     } catch (err) {
       console.error('Failed to save products', err);
     }

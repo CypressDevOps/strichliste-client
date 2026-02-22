@@ -6,6 +6,7 @@
 
 import { Product } from './models';
 import { safeJsonParse } from '../utils/safeJson';
+import { setItemWithBackup } from '../utils/backupService';
 import {
   ProductStock,
   PackingBreakdownEntry,
@@ -38,7 +39,7 @@ export function initializeStockSystem(products: Product[]): void {
     }));
 
     const allStocks = [...existingStocks, ...newStocks];
-    localStorage.setItem(STOCK_STORAGE_KEY, JSON.stringify(allStocks));
+    setItemWithBackup(STOCK_STORAGE_KEY, JSON.stringify(allStocks));
   }
 }
 
@@ -71,7 +72,7 @@ export function getAllStocks(): ProductStock[] {
  */
 function saveStocks(stocks: ProductStock[]): void {
   try {
-    localStorage.setItem(STOCK_STORAGE_KEY, JSON.stringify(stocks));
+    setItemWithBackup(STOCK_STORAGE_KEY, JSON.stringify(stocks));
   } catch (error) {
     console.error('Fehler beim Speichern der Bestände:', error);
   }
@@ -303,7 +304,7 @@ function recordStockHistory(entry: StockHistoryEntry): void {
   try {
     const history = getStockHistory();
     history.push(entry);
-    localStorage.setItem(STOCK_HISTORY_KEY, JSON.stringify(history));
+    setItemWithBackup(STOCK_HISTORY_KEY, JSON.stringify(history));
   } catch (error) {
     console.error('Fehler beim Speichern der Bestandshistorie:', error);
   }
@@ -392,7 +393,7 @@ export function createImportSession(userId?: string): StockImportSession {
   try {
     const sessions = getAllImportSessions();
     sessions.push(session);
-    localStorage.setItem(IMPORT_SESSION_KEY, JSON.stringify(sessions));
+    setItemWithBackup(IMPORT_SESSION_KEY, JSON.stringify(sessions));
   } catch (error) {
     console.error('Fehler beim Erstellen der Import-Session:', error);
   }
@@ -425,7 +426,7 @@ export function updateImportSession(sessionId: string, updates: Partial<StockImp
     const session = sessions.find((s) => s.id === sessionId);
     if (session) {
       Object.assign(session, updates, { processed_at: new Date().toISOString() });
-      localStorage.setItem(IMPORT_SESSION_KEY, JSON.stringify(sessions));
+      setItemWithBackup(IMPORT_SESSION_KEY, JSON.stringify(sessions));
     }
   } catch (error) {
     console.error('Fehler beim Aktualisieren der Import-Session:', error);

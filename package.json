@@ -3,6 +3,8 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "author": "Ioannis Chirmpos",
+  "description": "This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -43,13 +45,11 @@
     "vite-plugin-pwa": "^1.2.0",
     "vitest": "^1.0.0"
   },
-  "description": "This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.",
   "main": "eslint.config.js",
   "repository": {
     "type": "git",
     "url": "https://ichirmpos@dev.azure.com/ichirmpos/Kassensystem/_git/client-pwa"
   },
   "keywords": [],
-  "author": "",
   "license": "ISC"
 }

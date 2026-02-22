@@ -41,6 +41,7 @@ import { recordSale } from '../services/salesStatsService';
 import { GameMenu } from './GameMenu';
 import { Game2048 } from './Game2048';
 import { DeutschlandQuiz } from './DeutschlandQuiz';
+import { TechnicalSettingsModal } from './TechnicalSettingsModal';
 import { DECKEL_STATUS } from '../domain/models';
 import {
   toDeckelForm,
@@ -54,10 +55,7 @@ import {
   restoreFromLocalBackup,
 } from '../utils/backupService';
 import { OfflineIndicator } from '../components/OfflineIndicator';
-import {
-  isLiveStockTrackingEnabled,
-  setLiveStockTracking,
-} from '../domain/stockSettingsService';
+import { isLiveStockTrackingEnabled, setLiveStockTracking } from '../domain/stockSettingsService';
 import { getStock, updateStock } from '../domain/stockService';
 
 export const DeckelScreen: React.FC = () => {
@@ -80,6 +78,7 @@ export const DeckelScreen: React.FC = () => {
   const [emergencyOverrideActive, setEmergencyOverrideActive] = useState(false);
   const [isBackupImportOpen, setIsBackupImportOpen] = useState(false);
   const [isTechMenuOpen, setIsTechMenuOpen] = useState(false);
+  const [isTechSettingsOpen, setIsTechSettingsOpen] = useState(false);
   const [isMonthlyReportOpen, setIsMonthlyReportOpen] = useState(false);
   const [isPdfSubmenuOpen, setIsPdfSubmenuOpen] = useState(false);
   const [isBelegSelectOpen, setIsBelegSelectOpen] = useState(false);
@@ -992,6 +991,19 @@ export const DeckelScreen: React.FC = () => {
                   <div className='text-sm text-gray-400'>Sicherheitssperren umgehen</div>
                 </div>
               </button>
+              <button
+                onClick={() => {
+                  setIsTechSettingsOpen(true);
+                  setIsTechMenuOpen(false);
+                }}
+                className='w-full text-left px-4 py-3 text-white hover:bg-gray-700 rounded transition flex items-center gap-3'
+              >
+                <span className='text-2xl'>⚙️</span>
+                <div>
+                  <div className='font-semibold'>Technische Einstellungen</div>
+                  <div className='text-sm text-gray-400'>Backup-Pfade und Debug-Infos</div>
+                </div>
+              </button>
             </div>
             <div className='px-6 py-3 bg-gray-900 rounded-b-lg border-t border-gray-700'>
               <p className='text-xs text-gray-500 text-center'>
@@ -1004,6 +1016,11 @@ export const DeckelScreen: React.FC = () => {
       )}
 
       <BackupImportModal isOpen={isBackupImportOpen} onClose={() => setIsBackupImportOpen(false)} />
+
+      <TechnicalSettingsModal
+        isOpen={isTechSettingsOpen}
+        onClose={() => setIsTechSettingsOpen(false)}
+      />
 
       <MonthlyReportModal
         isOpen={isMonthlyReportOpen}
