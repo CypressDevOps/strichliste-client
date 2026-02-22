@@ -96,6 +96,7 @@ export const StockImportModal: React.FC<StockImportModalProps> = ({ isOpen, onCl
 
   // New Product Creation
   const [isCreatingNewProduct, setIsCreatingNewProduct] = useState(false);
+  const [createForMatchIndex, setCreateForMatchIndex] = useState<number | null>(null);
   const [newProductCategory, setNewProductCategory] = useState<ProductCategory>('Bier');
   const [newProductPrice, setNewProductPrice] = useState<number>(1.0);
 
@@ -122,6 +123,7 @@ export const StockImportModal: React.FC<StockImportModalProps> = ({ isOpen, onCl
       setSelectedProductId('');
       setMessage(null);
       setIsCreatingNewProduct(false);
+      setCreateForMatchIndex(null);
       setNewProductCategory('Bier');
       setNewProductPrice(1.0);
       setPackingUnit('Einzelstück');
@@ -154,7 +156,79 @@ export const StockImportModal: React.FC<StockImportModalProps> = ({ isOpen, onCl
       const detectedMatches: StockImportMatch[] = [];
       const debugInfo: Array<{ line: string; bestMatch?: string; score?: number }> = [];
 
+      const normalizeText = (value: string): string => {
+        return value
+          .toLowerCase()
+          .replace(/\u00e4/g, 'ae')
+          .replace(/\u00f6/g, 'oe')
+          .replace(/\u00fc/g, 'ue')
+          .replace(/\u00df/g, 'ss');
+      };
+
+      const productTokens = Array.from(
+        new Set(
+          products.flatMap((product) =>
+            normalizeText(product.name)
+              .replace(/[^a-z0-9\s]/g, ' ')
+              .split(/\s+/)
+              .map((token) => token.trim())
+              .filter((token) => token.length >= 3)
+          )
+        )
+      );
+
+      const containsProductToken = (cleanedText: string): boolean => {
+        const haystack = ` ${cleanedText} `;
+        return productTokens.some((token) => haystack.includes(` ${token} `));
+      };
+
+      const isLikelyNoiseLine = (lineText: string): boolean => {
+        const normalized = normalizeText(lineText);
+        const cleaned = normalized
+          .replace(/[^a-z0-9\s]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (!cleaned) return true;
+
+        if (containsProductToken(cleaned)) return false;
+
+        const alpha = cleaned.replace(/[^a-z]/g, '');
+        const alphaCount = alpha.length;
+        const digitCount = (cleaned.match(/\d/g) || []).length;
+        const totalLen = cleaned.length;
+
+        // Zu wenig Buchstaben oder zu viele Zahlen/Sonderzeichen
+        if (alphaCount < 3) return true;
+        if (digitCount > alphaCount * 2) return true;
+        if (totalLen <= 2) return true;
+
+        // Zeilen mit typischen Kassen-Keywords ignorieren
+        const keywordPattern =
+          /(\brueckgeld\b|\bruckgeld\b|\bpfand\b|\bfand\b|\bsumme\b|\btotal\b|\bgesamt\b|\bmwst\b|\bsteuer\b|\brabatt\b|\bbar\b|\bec\b|\bkarte\b|\beur\b|\beuro\b)/i;
+        if (keywordPattern.test(cleaned)) return true;
+
+        // Kurzzeilen mit lauter Einzelbuchstaben oder Fragmenten
+        const tokens = cleaned.split(' ').filter(Boolean);
+        const shortTokens = tokens.filter((t) => t.length <= 2).length;
+        if (tokens.length > 0 && shortTokens / tokens.length > 0.6) return true;
+
+        return false;
+      };
+
       for (const line of lines) {
+        const normalizedLine = normalizeText(line);
+        const cleanedLine = normalizedLine
+          .replace(/[^a-z0-9\s]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        const hasProductToken = containsProductToken(cleanedLine);
+        const isIgnoredLine = /(\brueckgeld\b|\bruckgeld\b|\bpfand\b|\bfand\b)/i.test(
+          normalizedLine
+        );
+        if ((isIgnoredLine && !hasProductToken) || isLikelyNoiseLine(line)) {
+          debugInfo.push({ line });
+          continue;
+        }
         // Versuche Menge zu extrahieren (z.B. "24", "5x", "10 Stück")
         const qtyMatch = line.match(/(\d+)\s*(x|st|stück|stueck)?/i);
         const recognizedQty = qtyMatch ? parseInt(qtyMatch[1]) : 1;
@@ -202,40 +276,46 @@ export const StockImportModal: React.FC<StockImportModalProps> = ({ isOpen, onCl
           });
         }
 
-        if (bestMatch && bestMatch.score > 50) {
-          detectedMatches.push({
-            ocr_result: {
-              product_name: productNameMatch,
-              recognized_quantity: recognizedQty,
-              confidence: bestMatch.score / 100,
-              raw_text: line,
-            },
-            matched_product: {
-              product_id: bestMatch.product.id,
-              name: bestMatch.product.name,
-              match_type: bestMatch.score > 90 ? 'name_exact' : 'name_fuzzy',
-              match_score: bestMatch.score / 100,
-            },
-            action: {
-              type: 'add',
-              value: recognizedQty,
-              unit: 'Stück',
-            },
-            is_confirmed: false,
-            manual_product_id: bestMatch.product.id,
-            packing_unit: 'Einzelstück',
-            units_per_pack: undefined,
-          });
-        }
+        const hasMatch = !!(bestMatch && bestMatch.score > 50);
+
+        detectedMatches.push({
+          ocr_result: {
+            product_name: productNameMatch,
+            recognized_quantity: recognizedQty,
+            confidence: hasMatch ? bestMatch!.score / 100 : 0,
+            raw_text: line,
+          },
+          matched_product: hasMatch
+            ? {
+                product_id: bestMatch!.product.id,
+                name: bestMatch!.product.name,
+                match_type: bestMatch!.score > 90 ? 'name_exact' : 'name_fuzzy',
+                match_score: bestMatch!.score / 100,
+              }
+            : undefined,
+          action: {
+            type: 'add',
+            value: recognizedQty,
+            unit: 'Stück',
+          },
+          is_confirmed: false,
+          manual_product_id: hasMatch ? bestMatch!.product.id : undefined,
+          packing_unit: 'Einzelstück',
+          units_per_pack: undefined,
+        });
       }
 
       setMatches(detectedMatches);
       setOcrDebugInfo(debugInfo);
 
       if (detectedMatches.length > 0) {
+        const matchedCount = detectedMatches.filter((item) => item.manual_product_id).length;
+        const unmatchedCount = detectedMatches.length - matchedCount;
+        const summary = unmatchedCount > 0 ? ` (${unmatchedCount} ohne Match)` : '';
+
         setMessage({
-          type: 'success',
-          text: `✓ ${detectedMatches.length} Artikel erkannt. Bitte überprüfen und bei Bedarf anpassen.`,
+          type: matchedCount > 0 ? 'success' : 'error',
+          text: `✓ ${matchedCount} Artikel zugeordnet${summary}. Bitte prüfen und fehlende zuordnen.`,
         });
       } else {
         setMessage({
@@ -414,15 +494,38 @@ export const StockImportModal: React.FC<StockImportModalProps> = ({ isOpen, onCl
       return;
     }
 
-    if (!quantity.trim()) {
-      setMessage({ type: 'error', text: 'Menge erforderlich' });
-      return;
-    }
+    let qty: number;
+    let packsCount: number | undefined;
 
-    const qty = parseInt(quantity, 10);
-    if (isNaN(qty) || qty <= 0) {
-      setMessage({ type: 'error', text: 'Ungültige Menge' });
-      return;
+    if (packingUnit === 'Einzelstück') {
+      if (!quantity.trim()) {
+        setMessage({ type: 'error', text: 'Menge erforderlich' });
+        return;
+      }
+
+      qty = parseInt(quantity, 10);
+      if (isNaN(qty) || qty <= 0) {
+        setMessage({ type: 'error', text: 'Ungültige Menge' });
+        return;
+      }
+    } else {
+      if (!numberOfPacks.trim() || !unitsPerPack.trim()) {
+        setMessage({
+          type: 'error',
+          text: 'Bitte Anzahl Verpackungen und Stück pro Verpackung eingeben',
+        });
+        return;
+      }
+
+      const packs = parseInt(numberOfPacks, 10);
+      const perPack = parseInt(unitsPerPack, 10);
+      if (isNaN(packs) || packs <= 0 || isNaN(perPack) || perPack <= 0) {
+        setMessage({ type: 'error', text: 'Ungültige Anzahl' });
+        return;
+      }
+
+      packsCount = packs;
+      qty = packs * perPack;
     }
 
     if (newProductPrice <= 0) {
@@ -442,45 +545,83 @@ export const StockImportModal: React.FC<StockImportModalProps> = ({ isOpen, onCl
     // Lade neu erstelltes Produkt
     const newProduct = updatedProducts[updatedProducts.length - 1];
 
-    // Füge zum Import hinzu
-    const newMatch: StockImportMatch = {
-      ocr_result: {
-        product_name: newProduct.name,
-        recognized_quantity: qty,
-        confidence: 1.0,
-        raw_text: `${newProduct.name} ${qty}`,
-      },
-      matched_product: {
-        product_id: newProduct.id,
-        name: newProduct.name,
-        match_type: 'name_exact',
-        match_score: 1.0,
-      },
-      action: {
-        type: 'add',
-        value: qty,
-        unit: 'Stück',
-      },
-      is_confirmed: false,
-      manual_product_id: newProduct.id,
-      packing_unit: packingUnit,
-      units_per_pack: packingUnit !== 'Einzelstück' ? parseInt(unitsPerPack) : undefined,
-      packs_count:
-        packingUnit !== 'Einzelstück' && numberOfPacks.trim()
-          ? parseInt(numberOfPacks, 10)
-          : undefined,
-    };
+    if (createForMatchIndex !== null) {
+      setMatches((prev) =>
+        prev.map((match, index) => {
+          if (index !== createForMatchIndex) return match;
 
-    setMatches([...matches, newMatch]);
-    setMessage({
-      type: 'success',
-      text: `✓ Produkt "${newProduct.name}" erstellt und hinzugefügt`,
-    });
+          return {
+            ...match,
+            ocr_result: {
+              ...match.ocr_result,
+              product_name: newProduct.name,
+              recognized_quantity: qty,
+              raw_text: `${newProduct.name} ${qty}`,
+              confidence: 1.0,
+            },
+            matched_product: {
+              product_id: newProduct.id,
+              name: newProduct.name,
+              match_type: 'name_exact',
+              match_score: 1.0,
+            },
+            action: {
+              ...match.action,
+              value: qty,
+              unit: 'Stück',
+            },
+            manual_product_id: newProduct.id,
+            packing_unit: packingUnit,
+            units_per_pack: packingUnit !== 'Einzelstück' ? parseInt(unitsPerPack, 10) : undefined,
+            packs_count: packingUnit !== 'Einzelstück' ? packsCount : undefined,
+          };
+        })
+      );
+
+      setMessage({
+        type: 'success',
+        text: `✓ Produkt "${newProduct.name}" erstellt und zugeordnet`,
+      });
+      setCreateForMatchIndex(null);
+    } else {
+      // Füge zum Import hinzu
+      const newMatch: StockImportMatch = {
+        ocr_result: {
+          product_name: newProduct.name,
+          recognized_quantity: qty,
+          confidence: 1.0,
+          raw_text: `${newProduct.name} ${qty}`,
+        },
+        matched_product: {
+          product_id: newProduct.id,
+          name: newProduct.name,
+          match_type: 'name_exact',
+          match_score: 1.0,
+        },
+        action: {
+          type: 'add',
+          value: qty,
+          unit: 'Stück',
+        },
+        is_confirmed: false,
+        manual_product_id: newProduct.id,
+        packing_unit: packingUnit,
+        units_per_pack: packingUnit !== 'Einzelstück' ? parseInt(unitsPerPack, 10) : undefined,
+        packs_count: packingUnit !== 'Einzelstück' ? packsCount : undefined,
+      };
+
+      setMatches([...matches, newMatch]);
+      setMessage({
+        type: 'success',
+        text: `✓ Produkt "${newProduct.name}" erstellt und hinzugefügt`,
+      });
+    }
 
     // Reset
     setProductName('');
     setQuantity('');
     setIsCreatingNewProduct(false);
+    setCreateForMatchIndex(null);
     setNewProductCategory('Bier');
     setNewProductPrice(1.0);
     setPackingUnit('Einzelstück');
@@ -490,6 +631,7 @@ export const StockImportModal: React.FC<StockImportModalProps> = ({ isOpen, onCl
 
   const handleCancelNewProduct = () => {
     setIsCreatingNewProduct(false);
+    setCreateForMatchIndex(null);
     setProductName('');
     setQuantity('');
     setNewProductCategory('Bier');
@@ -504,6 +646,29 @@ export const StockImportModal: React.FC<StockImportModalProps> = ({ isOpen, onCl
     setMatches(matches.filter((_, i) => i !== index));
   };
 
+  const handleCreateFromMatch = (match: StockImportMatch, index: number) => {
+    setCreateForMatchIndex(index);
+    setIsCreatingNewProduct(true);
+    setSelectedProductId('');
+    setProductName(match.ocr_result.product_name || '');
+
+    const nextPackingUnit = match.packing_unit ?? 'Einzelstück';
+    setPackingUnit(nextPackingUnit);
+
+    if (nextPackingUnit === 'Einzelstück') {
+      setQuantity(match.action.value.toString());
+      setUnitsPerPack('1');
+      setNumberOfPacks('');
+    } else {
+      const unitsPerPackValue = match.units_per_pack ?? 1;
+      const packsValue =
+        match.packs_count ?? Math.max(0, Math.round(match.action.value / unitsPerPackValue));
+      setUnitsPerPack(unitsPerPackValue.toString());
+      setNumberOfPacks(packsValue.toString());
+      setQuantity('');
+    }
+  };
+
   const handleUpdateMatch = (
     index: number,
     updates: {
@@ -511,6 +676,7 @@ export const StockImportModal: React.FC<StockImportModalProps> = ({ isOpen, onCl
       packs?: number;
       packingUnit?: 'Einzelstück' | 'Kiste' | 'Karton' | 'Palette';
       unitsPerPack?: number | null;
+      productId?: string;
     }
   ) => {
     setMatches((prev) =>
@@ -553,6 +719,10 @@ export const StockImportModal: React.FC<StockImportModalProps> = ({ isOpen, onCl
           nextQuantity = nextPacksCount * safeUnitsPerPack;
         }
 
+        const nextProduct = updates.productId
+          ? products.find((p) => p.id === updates.productId) || null
+          : null;
+
         return {
           ...match,
           action:
@@ -564,6 +734,21 @@ export const StockImportModal: React.FC<StockImportModalProps> = ({ isOpen, onCl
           packing_unit: nextPackingUnit,
           units_per_pack: nextUnitsPerPack,
           packs_count: nextPackingUnit === 'Einzelstück' ? undefined : nextPacksCount,
+          manual_product_id:
+            updates.productId !== undefined
+              ? updates.productId || undefined
+              : match.manual_product_id,
+          matched_product:
+            updates.productId !== undefined
+              ? nextProduct
+                ? {
+                    product_id: nextProduct.id,
+                    name: nextProduct.name,
+                    match_type: 'name_exact',
+                    match_score: 1.0,
+                  }
+                : undefined
+              : match.matched_product,
         };
       })
     );
@@ -760,6 +945,29 @@ export const StockImportModal: React.FC<StockImportModalProps> = ({ isOpen, onCl
                           <p className='text-white font-semibold'>
                             {match.matched_product?.name || match.ocr_result.product_name}
                           </p>
+                          {!match.manual_product_id && (
+                            <div className='mt-1'>
+                              <label className='block text-[11px] text-red-300 mb-1'>
+                                Kein Match - bitte Produkt zuordnen
+                              </label>
+                              <select
+                                value={match.manual_product_id ?? ''}
+                                onChange={(e) =>
+                                  handleUpdateMatch(idx, {
+                                    productId: e.target.value || undefined,
+                                  })
+                                }
+                                className='w-full px-2 py-1 bg-gray-800 text-white rounded border border-red-700 text-xs'
+                              >
+                                <option value=''>-- Produkt auswählen --</option>
+                                {products.map((product) => (
+                                  <option key={product.id} value={product.id}>
+                                    {product.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
                           <p className='text-gray-400 text-xs'>
                             {match.action.type === 'add' ? '+' : ''}
                             {match.action.value} {match.action.unit} (Vertrauen:{' '}
@@ -850,12 +1058,24 @@ export const StockImportModal: React.FC<StockImportModalProps> = ({ isOpen, onCl
                             )}
                           </div>
                         </div>
-                        <button
-                          onClick={() => handleRemoveItem(idx)}
-                          className='px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm transition'
-                        >
-                          ✕
-                        </button>
+                        <div className='flex flex-col items-end gap-2'>
+                          {!match.manual_product_id && (
+                            <button
+                              type='button'
+                              onClick={() => handleCreateFromMatch(match, idx)}
+                              className='px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs'
+                            >
+                              Neues Produkt
+                            </button>
+                          )}
+                          <button
+                            type='button'
+                            onClick={() => handleRemoveItem(idx)}
+                            className='px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm transition'
+                          >
+                            ✕
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

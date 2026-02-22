@@ -54,6 +54,11 @@ import {
   restoreFromLocalBackup,
 } from '../utils/backupService';
 import { OfflineIndicator } from '../components/OfflineIndicator';
+import {
+  isLiveStockTrackingEnabled,
+  setLiveStockTracking,
+} from '../domain/stockSettingsService';
+import { getStock, updateStock } from '../domain/stockService';
 
 export const DeckelScreen: React.FC = () => {
   const [businessInfo, setBusinessInfo] = useState(() => loadBusinessInfo());
@@ -84,6 +89,8 @@ export const DeckelScreen: React.FC = () => {
   const [isStockMenuOpen, setIsStockMenuOpen] = useState(false);
   const [isStockOverviewOpen, setIsStockOverviewOpen] = useState(false);
   const [isStockImportOpen, setIsStockImportOpen] = useState(false);
+  const [liveStockEnabled, setLiveStockEnabled] = useState(isLiveStockTrackingEnabled());
+  const [stockRefreshKey, setStockRefreshKey] = useState(0);
 
   // Easter Egg Game States
   const [isGameMenuOpen, setIsGameMenuOpen] = useState(false);
@@ -289,11 +296,42 @@ export const DeckelScreen: React.FC = () => {
       count: newCount,
       sum: unitSum * newCount,
     });
+
+    // Adjust stock if live tracking is enabled
+    if (liveStockEnabled) {
+      const product = products.find((p) => p.name === transaction.description);
+      if (product) {
+        if (delta > 0) {
+          // Increased quantity -> subtract from stock
+          updateStock(product.id, 'subtract', delta, undefined, 'Verkauf (Anpassung)');
+        } else if (delta < 0) {
+          // Decreased quantity -> add back to stock
+          updateStock(product.id, 'add', Math.abs(delta), undefined, 'Storno (Anpassung)');
+        }
+        setStockRefreshKey((prev) => prev + 1);
+      }
+    }
   };
 
   const handleDeleteTransaction = (txId: string) => {
     if (!selectedDeckel) return;
+
+    // Find the transaction before deleting to restore stock
+    const transaction = selectedDeckel.transactions?.find((t) => t.id === txId);
+
+    // Delete the transaction
     removeTransaction(selectedDeckel.id, txId);
+
+    // Restore stock if live tracking is enabled
+    if (liveStockEnabled && transaction) {
+      // Find the product by name (description)
+      const product = products.find((p) => p.name === transaction.description);
+      if (product) {
+        // Add back the quantity that was sold
+        updateStock(product.id, 'add', transaction.count, undefined, 'Storno');
+        setStockRefreshKey((prev) => prev + 1);
+      }
+    }
   };
 
   if (isMobile) {
@@ -425,9 +463,26 @@ export const DeckelScreen: React.FC = () => {
                         setIsMenuDropdownOpen(false);
                         setIsStockMenuOpen(false);
                       }}
-                      className='w-full text-left px-6 py-3 text-white hover:bg-gray-700 rounded-b-lg transition flex items-center gap-2'
+                      className='w-full text-left px-6 py-3 text-white hover:bg-gray-700 transition flex items-center gap-2'
                     >
                       <span>Bestand importieren</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        const newValue = !liveStockEnabled;
+                        setLiveStockEnabled(newValue);
+                        setLiveStockTracking(newValue);
+                        setIsMenuDropdownOpen(false);
+                        setIsStockMenuOpen(false);
+                      }}
+                      className='w-full text-left px-6 py-3 text-white hover:bg-gray-700 rounded-b-lg transition flex items-center gap-2'
+                    >
+                      <span className='flex items-center gap-2'>
+                        <span
+                          className={`inline-block w-3 h-3 rounded-full ${liveStockEnabled ? 'bg-green-500' : 'bg-gray-500'}`}
+                        ></span>
+                        Bestand Live-Anzeige
+                      </span>
                     </button>
                   </div>
                 )}
@@ -531,6 +586,13 @@ export const DeckelScreen: React.FC = () => {
                     products={products.filter((p) => p.category === selectedCategory)}
                     category={selectedCategory}
                     onBack={() => setSelectedCategory(null)}
+                    liveStockEnabled={liveStockEnabled}
+                    getStockQuantity={(productId) => {
+                      // Use stockRefreshKey to trigger re-render when stock changes
+                      void stockRefreshKey;
+                      const stock = getStock(productId);
+                      return stock?.quantity ?? 0;
+                    }}
                     onAddProduct={(product, count) => {
                       if (!isAddingProductTransaction) {
                         setIsAddingProductTransaction(true);
@@ -543,6 +605,13 @@ export const DeckelScreen: React.FC = () => {
                           });
                           // Record sale for statistics
                           recordSale(product.name, count, product.price);
+
+                          // Decrement stock if live tracking is enabled
+                          if (liveStockEnabled) {
+                            updateStock(product.id, 'subtract', count, undefined, 'Verkauf');
+                            // Trigger re-render to show updated stock
+                            setStockRefreshKey((prev) => prev + 1);
+                          }
                         } finally {
                           setTimeout(() => setIsAddingProductTransaction(false), 300);
                         }
@@ -953,9 +1022,18 @@ export const DeckelScreen: React.FC = () => {
       {/* Stock Management Modals */}
       <StockOverviewModal
         isOpen={isStockOverviewOpen}
-        onClose={() => setIsStockOverviewOpen(false)}
+        onClose={() => {
+          setIsStockOverviewOpen(false);
+          setStockRefreshKey((prev) => prev + 1);
+        }}
       />
-      <StockImportModal isOpen={isStockImportOpen} onClose={() => setIsStockImportOpen(false)} />
+      <StockImportModal
+        isOpen={isStockImportOpen}
+        onClose={() => {
+          setIsStockImportOpen(false);
+          setStockRefreshKey((prev) => prev + 1);
+        }}
+      />
 
       {/*  Egg: Game Menu & Games */}
       <>
