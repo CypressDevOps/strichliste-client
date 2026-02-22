@@ -234,6 +234,9 @@ export function updateStock(
     created_at: new Date().toISOString(),
   });
 
+  // Trigger update event for UI components listening to stock changes
+  window.dispatchEvent(new Event('stock-updated'));
+
   return true;
 }
 
